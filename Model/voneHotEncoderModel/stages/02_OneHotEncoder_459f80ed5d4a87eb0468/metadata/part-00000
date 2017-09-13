@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.OneHotEncoder","timestamp":1504917939760,"sparkVersion":"2.1.1.2.6.1.3-4","uid":"OneHotEncoder_459f80ed5d4a87eb0468","paramMap":{"dropLast":true,"outputCol":"year_indexed_encoded","inputCol":"year_indexed"}}

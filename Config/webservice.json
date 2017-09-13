@@ -1,0 +1,5 @@
+{
+"url": "http://IP:Port/api/v1/service/xxxx/score",
+"authorization":  "Bearer xxxxxxxxxxxxxxxxxxx",
+"statsLocation":  "wasb://o16n@viennabigdalimitless.blob.core.windows.net/"
+}

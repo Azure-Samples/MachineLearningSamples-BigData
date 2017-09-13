@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.OneHotEncoder","timestamp":1504917942961,"sparkVersion":"2.1.1.2.6.1.3-4","uid":"OneHotEncoder_4f549dcc086d306e863a","paramMap":{"dropLast":true,"inputCol":"BusinessHour_indexed","outputCol":"BusinessHour_indexed_encoded"}}

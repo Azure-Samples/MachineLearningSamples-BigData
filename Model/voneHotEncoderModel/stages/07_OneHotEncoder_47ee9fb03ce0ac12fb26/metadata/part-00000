@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.OneHotEncoder","timestamp":1504917942460,"sparkVersion":"2.1.1.2.6.1.3-4","uid":"OneHotEncoder_47ee9fb03ce0ac12fb26","paramMap":{"dropLast":true,"outputCol":"Holiday_indexed_encoded","inputCol":"Holiday_indexed"}}

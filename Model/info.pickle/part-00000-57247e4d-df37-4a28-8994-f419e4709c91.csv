@@ -1,0 +1,8 @@
+key,val_1
+trainEnd,2016-06-30 23:59:59
+dataFile,"wasb://data@viennabigdalimitless.blob.core.windows.net/20[0,1][0-9]/[0,1][0-9]/[a,b]/[0-6]/request.csv"
+testSplitStart,2016-06-01 00:00:00
+duration,FULL
+trainBegin,2009-01-01 00:00:00
+columnOnlyIndexed,[]
+columnForEncode,"[dayofweek_indexed, ServerIP_indexed, year_indexed, month_indexed, weekofyear_indexed, dayofmonth_indexed, hourofday_indexed, Holiday_indexed, BusinessHour_indexed, Morning_indexed]"
