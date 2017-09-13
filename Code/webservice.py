@@ -35,10 +35,6 @@ import json
 from pandas import DataFrame
 
 
-
-
-
-
 def processDf(df):
     mlSourceDF = df
     mlSourceDF.printSchema()
@@ -136,11 +132,6 @@ def init(path="./"):
     
 def run(input_df):
     import json
-    #try:
-    #    inputList=json.loads(inputString)
-    #except ValueError:
-    #    return 'Bad input: expecting a json encoded list of lists.'
-    # inputString = "{\"input_df\":[{\"peakLoadLag55\": 157.85000000000002, \"year\": 2016, \"peakLoadLag48\": 275.8000000000001, \"peakLoadLag50\": 382.2000000000001, \"peakLoadLag96\": 466.48000000000013, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"key\": \"210.181.165.92_2016-06-29 01:00:00\", \"peakLoadLag60\": 124.6, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 429.1000000000001, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 205.10000000000002, \"peakLoadLag49\": 466.9000000000002, \"peakLoadLag72\": 408.8000000000001, \"peakLoadLag168\": 219.80000000000007, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 166.32000000000002, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 01:00:00\", \"peakLoadLag52\": 170.80000000000004, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 1, \"Holiday\": 0, \"dayofmonth\": 1}, {\"peakLoadLag55\": 117.6, \"year\": 2016, \"peakLoadLag48\": 243.88000000000002, \"peakLoadLag50\": 466.9000000000002, \"peakLoadLag96\": 2755.830000000001, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"key\": \"210.181.165.92_2016-06-29 02:00:00\", \"peakLoadLag60\": 468.30000000000007, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 306.6, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 219.10000000000002, \"peakLoadLag49\": 275.8000000000001, \"peakLoadLag72\": 357.4200000000001, \"peakLoadLag168\": 166.60000000000002, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 382.2000000000001, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 02:00:00\", \"peakLoadLag52\": 166.32000000000002, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 2, \"Holiday\": 0, \"dayofmonth\": 2}]}"
     try:
         print("receive input")
         import json

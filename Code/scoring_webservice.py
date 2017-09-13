@@ -33,63 +33,17 @@ from pyspark.ml.classification import RandomForestClassificationModel
 import datetime
 
 
-# Import Azure ML API SDK. The SDK is installed implicitly with the latest
-# version of the CLI in your default python environment
-#from azure.ml.api.schema.dataTypes import DataTypes
-#from azure.ml.api.schema.sampleDefinition import SampleDefinition
-#from azure.ml.api.realtime.services import generate_schema
+
 
 import webservice
 
-#os.environ["PYTHON_EGG_CACHE"] = "~/"
-
 #from azureml.sdk import data_collector
 trainBegin = '2009-01-01 00:00:00'
-# initialize logger
-#run_logger = data_collector.current_run() 
-#def attach_storage_container(spark, account, key):
-#    config = spark._sc._jsc.hadoopConfiguration()
-#    setting = "fs.azure.account.key." + account + ".blob.core.windows.net"
-#    if not config.get(setting):
-#        config.set(setting, key)
 
-FEATURE_COMPLEXITY = 2
-# 0 is the simplest model
-# 1 means with more statistic features
-# 2 means with some rolling features and feature scaling 
-# 3 means more rollong features with PCA
-
-DEBUG = 'TRUE'
-'FILTER_IP'
-# 3 use a few IP 'FILTER_IP'
-
-DURATION = 'ONE_MONTH'
-# 'ONE_MONTH' use a month's data 
-# 'ONE_YEAR' use a year's data  
-# 'ALL_YEAR' use all year's data
-# 'FULL' use full dataset with duplicated data copies
 
 # use the following two as the range to  calculate the holidays in the range of  [holidaBegin, holidayEnd ]
 holidayBegin = '2009-01-01'
 holidayEnd='2016-06-30'
-
-
-
-##################
-##global variable
-global  scoreBegin
-global  featureBegin
-global scoreEnd
-
-global scaler
-global ohPipelineModele
-global mlModelFile
-global mlModel
-
-global df
-global featureeddf
-global newDf
-global timeDf
 
 
 def getScoreTime(scoreBegin):
@@ -112,7 +66,7 @@ def getScoreTime(scoreBegin):
     return scoreBegin, scoreEnd, featureBegin, scoreEndDateTime,featureBeginDateTime, featureEndDateTime
 
 def readData(scoreBegin,serverIP, path):
-
+    #read daily statistics and hourly statistics from public container specified by path 
     scoreBegin, scoreEnd, featureBegin, scoreEndDateTime,featureBeginDateTime, featureEndDateTime = getScoreTime(scoreBegin)
     featureStartFile = path + "hourlyfeature/{0:04}/{1:02}/*/".format(featureBeginDateTime.year, featureBeginDateTime.month)
     featureEndFile = path + "hourlyfeature/{0:04}/{1:02}/*/".format(featureEndDateTime.year, featureEndDateTime.month)
@@ -136,7 +90,7 @@ def readData(scoreBegin,serverIP, path):
         print(dailyStatisticdf2.columns)
         dailyStatisticdf = dailyStatisticdf.unionAll(dailyStatisticdf2 )
     
-    IPList= {serverIP} #{'115.220.193.16','210.181.165.92'}
+    IPList= {serverIP} 
     hourlyfeaturedf = hourlyfeaturedf.filter(hourlyfeaturedf["ServerIP"].isin(IPList) == True)
     dailyStatisticdf = dailyStatisticdf.filter(dailyStatisticdf["d_ServerIP"].isin(IPList) == True)
     
@@ -251,7 +205,6 @@ def getFeature(hourlyfeaturedf,scoreBegin):
     
     featureeddf= featureeddf.filter(featureeddf.StartHour >= lit(scoreBegin).cast(TimestampType()) ).filter(featureeddf.StartHour < lit(scoreEnd).cast(TimestampType()))
     
-    #featureeddf = featureeddf.withColumn("key", concat(featureeddf.h_ServerIP,lit("_"),featureeddf.StartHour.cast('string')))
     # Extract some time features from "SessionStartHourTime" column
     from pyspark.sql.functions import year, month, weekofyear, dayofmonth, date_format, hour
     featureeddf = featureeddf.withColumn('year', year(featureeddf['StartHour']))
@@ -290,7 +243,6 @@ def getFeature(hourlyfeaturedf,scoreBegin):
     isHolidayUdf =  udf (isHoliday, IntegerType())
     featureeddf= featureeddf.withColumn('date', date_format(col('StartHour'), 'yyyy-MM-dd'))
     featureeddf = featureeddf.withColumn("Holiday",isHolidayUdf('date'))
-    #featureeddf.select(['date', 'Holiday'],).dropDuplicates().orderBy('date').show(20)
     
     def isBusinessHour(x):
         if x is None:
@@ -312,43 +264,11 @@ def getFeature(hourlyfeaturedf,scoreBegin):
     isMorningUdf =  udf (isMorning, IntegerType())
     featureeddf = featureeddf.withColumn("Morning",isMorningUdf('hourofday'))
     
-    dfLen = featureeddf.count()
     featureeddf.persist()
     
     return featureeddf
 
-def batchScore(scoreBegin= '2016-07-01 00:00:00',serverIP='210.181.165.92'):    
-    webservice.init("./Model/")    
-    dailyTimeDf,timeDf = getTimeDf(scoreBegin, serverIP)
-    hourlyfeatureDf,dailyStatisticDf = readData(scoreBegin, serverIP, statsLocation)
-    hourlyfeatureDf.show(5)
-    print("hourlyfeatureDf count: ",hourlyfeatureDf.count())
-    print("dailyStatisticdf count: ",dailyStatisticDf.count())
-    lagDf = getLag(dailyTimeDf, timeDf, dailyStatisticDf, hourlyfeatureDf )
-    lagDf.show()
-    print("lagDf count", lagDf.count())
-    featureDf = getFeature(lagDf,scoreBegin)
-    print("featureDf count", featureDf.count())
-    features =  [x for x in featureDf.columns if 'Lag' in x]
-    features.extend(["h_key","StartHour","linearTrend"])
-    columnsForIndex = ['dayofweek', 'h_ServerIP', 'year', 'month', 'weekofyear', 'dayofmonth', 'hourofday', 
-                     'Holiday', 'BusinessHour', 'Morning']
-    features.extend(columnsForIndex)
-    featureDf = featureDf.select(features)
-    featureDf = featureDf.withColumn("key", col("h_key"))
-    featureDf = featureDf.withColumnRenamed("StartHour", "SessionStartHourTime")
-    featureDf = featureDf.withColumnRenamed("h_ServerIP", "ServerIP")
-    featureDf = featureDf.fillna(0, subset= [x for x in featureDf.columns if 'Lag' in x])
-    #StartHour ->SessionStartHourTime
-    #h_ServerIP -> ServerIP
-    featureDf = featureDf.fillna(0, subset= ['linearTrend'])
-    featureDf.printSchema()
-    featureDf.show(5)
-    temp = featureDf.toPandas()
-    # make sure the key column exist in the json object
-    temp = temp.set_index(['h_key']) 
-    prediction=webservice.run(temp.to_json(orient='records'))
-    print(prediction)
+
 
 def miniBatchWebServiceScore(scoreBegin= '2016-07-01 00:00:00',serverIP='210.181.165.92'):    
     webservice.init("./Model/")    
@@ -386,11 +306,6 @@ def miniBatchWebServiceScore(scoreBegin= '2016-07-01 00:00:00',serverIP='210.181
     
 def consumePOSTRequestSync(url, data, authorization ):
     import requests
-    #data = "[{\"peakLoadLag55\": 157.85000000000002, \"year\": 2016, \"peakLoadLag48\": 275.8000000000001, \"peakLoadLag50\": 382.2000000000001, \"peakLoadLag96\": 466.48000000000013, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"key\": \"210.181.165.92_2016-06-29 01:00:00\", \"peakLoadLag60\": 124.6, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 429.1000000000001, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 205.10000000000002, \"peakLoadLag49\": 466.9000000000002, \"peakLoadLag72\": 408.8000000000001, \"peakLoadLag168\": 219.80000000000007, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 166.32000000000002, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 01:00:00\", \"peakLoadLag52\": 170.80000000000004, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 1, \"Holiday\": 0, \"dayofmonth\": 1}, {\"peakLoadLag55\": 117.6, \"year\": 2016, \"peakLoadLag48\": 243.88000000000002, \"peakLoadLag50\": 466.9000000000002, \"peakLoadLag96\": 2755.830000000001, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"key\": \"210.181.165.92_2016-06-29 02:00:00\", \"peakLoadLag60\": 468.30000000000007, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 306.6, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 219.10000000000002, \"peakLoadLag49\": 275.8000000000001, \"peakLoadLag72\": 357.4200000000001, \"peakLoadLag168\": 166.60000000000002, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 382.2000000000001, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 02:00:00\", \"peakLoadLag52\": 166.32000000000002, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 2, \"Holiday\": 0, \"dayofmonth\": 2}]"
-    
-    #url = 'http://23.101.153.175:80/api/v1/service/load22/score'
-    #-H "Content-Type:application/json" -H "Authorization:Bearer cb3f47eb7cde42968032b14b26c522be"
-    #headers = {"Content-Type": "application/json", "Authorization": "Bearer cb3f47eb7cde42968032b14b26c522be"}
     headers = {"Content-Type": "application/json", "Authorization": authorization}
     # call get service with headers and params
     response = requests.post(url,data = data, headers=headers)
@@ -399,8 +314,6 @@ def consumePOSTRequestSync(url, data, authorization ):
     else: 
         return None
     
-
-
     
 if __name__ == '__main__':
     import json
