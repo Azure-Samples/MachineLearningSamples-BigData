@@ -237,7 +237,7 @@ Please note here we choose to use Azure Container Service as the environment
 
 3. Download and register the models
 
-Download the models  in the "fullmodel" container to your local machine in the directory of code. Do not download the parquet data file with name "vmlSource.parquet". Register the models as follows:
+Download the models  in the "fullmodel" container to your local machine in the directory of code. Do not download the parquet data file with name "vmlSource.parquet" as it's not a model file but intermediate compute result. You can also reuse the model files we have included in the git. Register the models as follows:
 
 ```az ml model register -m vmlModel -n vmlModel -t fullmodel ```
 
