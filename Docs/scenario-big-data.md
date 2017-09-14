@@ -2,7 +2,7 @@
 
 [//]: # "![Data_Diagram](https://www.usb-antivirus.com/wp-content/uploads/2014/11/tutorial-windwos-10-2-320x202.png)"
 
-* Documentation site for GitHub repository (TODO).
+* Documentation site for GitHub repository https://github.com/Azure/MachineLearningSamples-BigData.
 
 [//]: # (**The above info will be included in the Readme on GitHub**)
 
@@ -299,17 +299,13 @@ This example highlights how to use Azure ML Workbench to train a machine learnin
 
 * Operationalization.
 
-Users can extend the code to explore  cross-validation and hyper-parameter tuning. 
-[TODO: Reference Angus's or Jaya's Tutorial.]
+Users can extend the code to explore cross-validation  and hyper-parameter tuning. To learn more about hyper-parameter tuning, please visit https://github.com/Azure/MachineLearningSamples-DistributedHyperParameterTuning.  
+To learn more about time-series forcasting with cross-validation, please visit https://github.com/Azure/MachineLearningSamples-EnergyDemandTimeSeriesForecasting.
 
 
 ## Contact
 
 Feel free to contact Daisy Deng (daden@microsoft.com) with any question or comment.
-
-## Disclaimer
-
-_TODO_
 
 
 
