@@ -1,8 +1,11 @@
 # Vienna on Terabytes Data
 
-[//]: # "![Data_Diagram](https://www.usb-antivirus.com/wp-content/uploads/2014/11/tutorial-windwos-10-2-320x202.png)"
+## Link of the Gallery GitHub repository
 
-* Documentation site for GitHub repository https://github.com/Azure/MachineLearningSamples-BigData.
+Following is the link to the public GitHub repository: 
+
+[https://github.com/Azure/MachineLearningSamples-BigData](https://github.com/Azure/MachineLearningSamples-BigData)
+
 
 [//]: # (**The above info will be included in the Readme on GitHub**)
 
@@ -10,10 +13,11 @@
 [//]: # (Please note this section will be included in the Readme file on GitHub repo.) 
 The prerequisites to run this example are as follows:
 
-1. Make sure that you have properly installed Azure Machine Learning (ML) Workbench by following the  [installation guide](https://github.com/Azure/ViennaDocs/blob/master/Documentation/Installation.md).
-2. This tutorial assumes that you are running Azure ML Workbench on Windows 10 with Docker engine locally installed. If you are using macOS, the instruction is largely the same.
-3. A Data Science Virtual Machine (DSVM) for Linux (Ubuntu). (https://azuremarketplace.microsoft.com/en-us/marketplace/apps/microsoft-ads.linux-data-science-vm-ubuntu). You can provision a Ubuntu DSVM following the instructions [here](https://docs.microsoft.com/en-us/azure/machine-learning/machine-learning-data-science-provision-vm). We recommend using a virtual machine with at least 8 cores and 32-GB of memory. You need the DSVM IP address, user name and password to try out this example.
-4. A HDInisght Spark Cluster with HDP version 3.6 and Spark version 2.1.1. Visit [Create an Apache Spark cluster in Azure HDInsight] (https://docs.microsoft.com/en-us/azure/hdinsight/hdinsight-apache-spark-jupyter-spark-sql) for details of how to create HDInsight clusters. We suggest using a three-worker cluster with each worker having 16 cores and 112-GB of memory. You need the cluster name, SSH user name and password to try out this example.
+1.  An [Azure account](https://azure.microsoft.com/en-us/free/) (free trials are available).
+2. An installed copy of [Azure Machine Learning Workbench](./overview-what-is-azure-ml.md) following the [quick start installation guide](./quick-start-installation.md) to install the program and create a workspace.
+3. This scenario assumes that you are running Azure ML Workbench on Windows 10 with Docker engine locally installed. If you are using macOS, the instruction is largely the same.
+4. A Data Science Virtual Machine (DSVM) for Linux (Ubuntu). (https://azuremarketplace.microsoft.com/en-us/marketplace/apps/microsoft-ads.linux-data-science-vm-ubuntu). You can provision a Ubuntu DSVM following the instructions [here](https://docs.microsoft.com/en-us/azure/machine-learning/machine-learning-data-science-provision-vm). We recommend using a virtual machine with at least 8 cores and 32-GB of memory. You need the DSVM IP address, user name and password to try out this example.
+5. A HDInisght Spark Cluster with HDP version 3.6 and Spark version 2.1.1. Visit [Create an Apache Spark cluster in Azure HDInsight] (https://docs.microsoft.com/en-us/azure/hdinsight/hdinsight-apache-spark-jupyter-spark-sql) for details of how to create HDInsight clusters. We suggest using a three-worker cluster with each worker having 16 cores and 112-GB of memory. You need the cluster name, SSH user name and password to try out this example.
 1. An Azure Storage account. You can find instructions for creating storage account [here](https://docs.microsoft.com/en-us/azure/storage/common/storage-create-storage-account). Also create two Blob containers with name "`fullmodel`" and "`onemonthmodel`" in this storage account. The storage account is used to save intermediate compute results and machine learning models. You need the storage account and access key to try out this example.
 
 The Ubuntu DSVM and the HDInsight cluster created in the pre-requisite list are compute targets. Compute targets are the compute resource in the context of AML Workbench, which might be different from the computer where Azure ML Workbench runs. 
@@ -23,11 +27,11 @@ The Ubuntu DSVM and the HDInsight cluster created in the pre-requisite list are 
 
 [//]: # (A brief description on what your tutorial is about, what users expect to get out of your tutorial, what Vienna capabilities your tutorial will highlight.)
 
-This tutorial illustrates how data scientists can use Azure ML Workbench to develop solutions that requires use of big data. We show how a user by using Azure ML Workbench can follow a happy path of starting from a fraction of a large dataset, iterating through data preparation, feature engineering and machine learning, and then eventually extending the process to the entire large dataset. 
+This scenario illustrates how data scientists can use Azure ML Workbench to develop solutions that requires use of big data. We show how a user by using Azure ML Workbench can follow a happy path of starting from a fraction of a large dataset, iterating through data preparation, feature engineering and machine learning, and then eventually extending the process to the entire large dataset. 
 
 Along the way, we show the following key capabilities of Azure ML Workbench:
 <ul>
-    <li>Easy switching between compute targets:</li>We show how the user can set up different compute targets and use them in  experimentation. In this tutorial, we use a Ubuntu DSVM and a HDInsight cluster as the compute targets. We also show the user how to configure the compute targets depending on the availability of resources. In particular, after scaling out the Spark cluster (that is, including more worker nodes in the Spark cluster), how the user can use the resources through Azure ML Workbench to speed up experiment runs.
+    <li>Easy switching between compute targets:</li>We show how the user can set up different compute targets and use them in  experimentation. In this example, we use a Ubuntu DSVM and a HDInsight cluster as the compute targets. We also show the user how to configure the compute targets depending on the availability of resources. In particular, after scaling out the Spark cluster (that is, including more worker nodes in the Spark cluster), how the user can use the resources through Azure ML Workbench to speed up experiment runs.
     <li>Run History Tracking: </li> We show the user how Azure ML Workbench can be used as a way to track the performance of  machine learning models and other metrics of interests.
     <li>Operationalization of the Machine Learning Model: </li> we show the user how to use the build-in tools within Azure ML Workbench to deploy the trained machine learning model as web service on Azure Container Service (ACS), and how to use the web service to get mini-batch predictions through REST API Calls. 
     <li> Azure ML Workbench's capability to support Terabytes data.
@@ -37,7 +41,7 @@ Along the way, we show the following key capabilities of Azure ML Workbench:
 
 [//]: # (Note this section is included in the Readme file on GitHub repo.) 
 
-Forecasting the workload on servers or a group of servers is a common business need for technology companies that manage their own infrastructure. To reduce infrastructure cost, services running on under-utilized servers should be grouped together to run on a smaller number of machines, and services running on heavy-loaded servers should be given more machines to run. In this scenario, we focus on workload prediction for each machine (or server). Particularly, we classify the load of each server into low, medium, and high classes by using Random Forest Classification in Apache Spark ML. The machine learning techniques and workflow in this tutorial can be easily extended to other similar problems.   
+Forecasting the workload on servers or a group of servers is a common business need for technology companies that manage their own infrastructure. To reduce infrastructure cost, services running on under-utilized servers should be grouped together to run on a smaller number of machines, and services running on heavy-loaded servers should be given more machines to run. In this scenario, we focus on workload prediction for each machine (or server). Particularly, we classify the load of each server into low, medium, and high classes by using Random Forest Classification in Apache Spark ML. The machine learning techniques and workflow in this use case can be easily extended to other similar problems.   
 
 ## Data Description
 
@@ -93,7 +97,7 @@ The files in this example are organized as follows.
 | `readme.md` | Markdown file | The README markdown file |
 
 
-You can create an AML Workbench project with a pre-created git repository. In the project directory, clone the tutorial Git repository to download the files. Run git status to inspect the status of the files for version tracking. Go to "Code" folder and run "git status" to see all the files.
+You can create an AML Workbench project with a pre-created git repository. In the project directory, clone the Git repository of this sample to download the files. Run git status to inspect the status of the files for version tracking. Go to "Code" folder and run "git status" to see all the files.
 
 ### Data Ingestion & Flow
 
@@ -287,7 +291,7 @@ to get the authorization key and use
 
 to get the service URL.
 
-## Conclusion & Next Steps
+## Conclusion
 
 This example highlights how to use Azure ML Workbench to train a machine learning model on big data and operationalize the trained model. In particular, we showed how to:
 
