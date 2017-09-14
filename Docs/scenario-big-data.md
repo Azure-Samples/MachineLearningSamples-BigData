@@ -1,18 +1,16 @@
 # Vienna on Terabytes Data
 
--[//]: # "![Data_Diagram](https://www.usb-antivirus.com/wp-content/uploads/2014/11/tutorial-windwos-10-2-320x202.png)"
- +## Link of the Gallery GitHub repository
- +
- +Following is the link to the public GitHub repository: 
- +
- +[https://github.com/Azure/MachineLearningSamples-BigData](https://github.com/Azure/MachineLearningSamples-BigData)
+## Link of the Gallery GitHub repository
+Following is the link to the public GitHub repository:
+
+[https://github.com/Azure/MachineLearningSamples-BigData](https://github.com/Azure/MachineLearningSamples-BigData)
 
 ## Prerequisites
 [//]: # (Please note this section will be included in the Readme file on GitHub repo.) 
 The prerequisites to run this example are as follows:
 
 1. An [Azure account](https://azure.microsoft.com/en-us/free/) (free trials are available).
-2. An installed copy of [Azure Machine Learning Workbench](./overview-what-is-azure-ml.md) following the [quick start installation guide](./quick-start-installation.md) to install the program and create a workspace.
+2. An installed copy of [Azure Machine Learning Workbench](./overview-what-is-azure-ml) following the [quick start installation guide](./quick-start-installation) to install the program and create a workspace.
 3. This scenario assumes that you are running Azure ML Workbench on Windows 10 with Docker engine locally installed. If you are using macOS, the instruction is largely the same.
 4. A Data Science Virtual Machine (DSVM) for Linux (Ubuntu). (https://azuremarketplace.microsoft.com/en-us/marketplace/apps/microsoft-ads.linux-data-science-vm-ubuntu). You can provision a Ubuntu DSVM following the instructions [here](https://docs.microsoft.com/en-us/azure/machine-learning/machine-learning-data-science-provision-vm). We recommend using a virtual machine with at least 8 cores and 32-GB of memory. You need the DSVM IP address, user name and password to try out this example.
 5. A HDInisght Spark Cluster with HDP version 3.6 and Spark version 2.1.1. Visit [Create an Apache Spark cluster in Azure HDInsight] (https://docs.microsoft.com/en-us/azure/hdinsight/hdinsight-apache-spark-jupyter-spark-sql) for details of how to create HDInsight clusters. We suggest using a three-worker cluster with each worker having 16 cores and 112-GB of memory. You need the cluster name, SSH user name and password to try out this example.
