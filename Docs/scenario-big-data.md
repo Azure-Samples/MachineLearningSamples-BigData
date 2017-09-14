@@ -10,27 +10,26 @@
 [//]: # (Please note this section will be included in the Readme file on GitHub repo.) 
 The prerequisites to run this example are as follows:
 
-1. Make sure that you have properly installed Azure ML Workbench by following the [installation guide](https://github.com/Azure/ViennaDocs/blob/master/Documentation/Installation.md).
-[//]: (For operationalization, it is best if you have Docker engine installed and running locally. If not, you can use the cluster option.  Notice that running an (ACS) Azure Container Service can be expensive.)
-1. This tutorial assumes that you are running Azure ML Workbench on Windows 10 with Docker engine locally installed. If you are using macOS, the instruction is largely the same.
-1. A Data Science Virtual Machine for Linux (Ubuntu)] (https://azuremarketplace.microsoft.com/en-us/marketplace/apps/microsoft-ads.linux-data-science-vm-ubuntu) with at least 32-GB memory. 
-1. A HDInisght Spark Cluster with HDP version 3.6 and Spark version 2.1.1. Visit [Create an Apache Spark cluster in Azure HDInsight] (https://docs.microsoft.com/en-us/azure/hdinsight/hdinsight-apache-spark-jupyter-spark-sql) for details of how to create HDInsight clusters. We suggest using a three-worker cluster with each worker having 16 cores and 112-GB memory.
-1. An Azure Storage account. Also create two Blob containers with name "`fullmodel`" and "`onemonthmodel`" in this storage account. The storage account is used to save intermediate compute results and machine learning models. 
+1. Make sure that you have properly installed Azure Machine Learning (ML) Workbench by following the  [installation guide](https://github.com/Azure/ViennaDocs/blob/master/Documentation/Installation.md).
+2. This tutorial assumes that you are running Azure ML Workbench on Windows 10 with Docker engine locally installed. If you are using macOS, the instruction is largely the same.
+3. A Data Science Virtual Machine (DSVM) for Linux (Ubuntu). (https://azuremarketplace.microsoft.com/en-us/marketplace/apps/microsoft-ads.linux-data-science-vm-ubuntu). You can provision a Ubuntu DSVM following the instructions [here](https://docs.microsoft.com/en-us/azure/machine-learning/machine-learning-data-science-provision-vm). We recommend using a virtual machine with at least 8 cores and 32-GB of memory. You need the DSVM IP address, user name and password to try out this example.
+4. A HDInisght Spark Cluster with HDP version 3.6 and Spark version 2.1.1. Visit [Create an Apache Spark cluster in Azure HDInsight] (https://docs.microsoft.com/en-us/azure/hdinsight/hdinsight-apache-spark-jupyter-spark-sql) for details of how to create HDInsight clusters. We suggest using a three-worker cluster with each worker having 16 cores and 112-GB of memory. You need the cluster name, SSH user name and password to try out this example.
+1. An Azure Storage account. You can find instructions for creating storage account [here](https://docs.microsoft.com/en-us/azure/storage/common/storage-create-storage-account). Also create two Blob containers with name "`fullmodel`" and "`onemonthmodel`" in this storage account. The storage account is used to save intermediate compute results and machine learning models. You need the storage account and access key to try out this example.
 
-The Data Science Virtual Machine (DSVM)  and the HDInsight cluster created in the pre-requisite list are the compute targets. Compute targets are the compute resource in the context of AML Workbench, which might be different from the computer where Azure ML Workbench runs. 
+The Ubuntu DSVM and the HDInsight cluster created in the pre-requisite list are compute targets. Compute targets are the compute resource in the context of AML Workbench, which might be different from the computer where Azure ML Workbench runs. 
 
 ## Introduction
 [//]: # (Please note this section will be included in the Readme file on GitHub repo.) 
 
 [//]: # (A brief description on what your tutorial is about, what users expect to get out of your tutorial, what Vienna capabilities your tutorial will highlight.)
 
-This tutorial illustrates how data scientists can use Azure ML Workbench to develop solutions that requires use of big data. We show how a user by using Azure ML Workbench can follow a happy path of starting from a fraction of a large dataset, iterating through the data preparation, feature engineering and machine learning, and then eventually extending the process to the entire large dataset. 
+This tutorial illustrates how data scientists can use Azure ML Workbench to develop solutions that requires use of big data. We show how a user by using Azure ML Workbench can follow a happy path of starting from a fraction of a large dataset, iterating through data preparation, feature engineering and machine learning, and then eventually extending the process to the entire large dataset. 
 
 Along the way, we show the following key capabilities of Azure ML Workbench:
 <ul>
-    <li>Easy switching between Compute Targets:</li>We show how the user can set up different compute targets and use them in your experimentation. In this tutorial, we use a Linux DSVM and a HDInsight cluster as the compute targets. We also show the user how to configure the compute targets depending on the availability of resources. In particular, after scaling out your cluster (that is, including more worker nodes in your cluster), how you can use the resources through Azure ML Workbench to speed up your experiment.
-    <li>Run History Tracking: </li> We show the user how Azure ML Workbench can be used as a way to track the performance of your model and other metrics of interests.
-    <li>Operationalization of the Machine Learning Model: </li> we show the user how to use the build-in tools within Azure ML Workbench to deploy the machine learning model as web service on Azure Container Service, and how to use the web service to get mini-batch predictions through REST API Calls. 
+    <li>Easy switching between compute targets:</li>We show how the user can set up different compute targets and use them in  experimentation. In this tutorial, we use a Ubuntu DSVM and a HDInsight cluster as the compute targets. We also show the user how to configure the compute targets depending on the availability of resources. In particular, after scaling out the Spark cluster (that is, including more worker nodes in the Spark cluster), how the user can use the resources through Azure ML Workbench to speed up experiment runs.
+    <li>Run History Tracking: </li> We show the user how Azure ML Workbench can be used as a way to track the performance of  machine learning models and other metrics of interests.
+    <li>Operationalization of the Machine Learning Model: </li> we show the user how to use the build-in tools within Azure ML Workbench to deploy the trained machine learning model as web service on Azure Container Service (ACS), and how to use the web service to get mini-batch predictions through REST API Calls. 
     <li> Azure ML Workbench's capability to support Terabytes data.
 </ul>
 
@@ -38,15 +37,15 @@ Along the way, we show the following key capabilities of Azure ML Workbench:
 
 [//]: # (Note this section is included in the Readme file on GitHub repo.) 
 
-Forecasting the workload on servers or a group of servers is a common business need for technology companies that manage their own infrastructure. To reduce infrastructure cost, services running on under-utilized servers should be grouped together to run on a smaller number of machines, and services running on heavy-loaded servers should be given more machines to run. In this scenario, we focus on workload prediction for each machine (or server). Particularly, we classify the load of each server into low, medium, and high classes by using Random Forest Classification in spark.ml. The machine learning techniques and workflow in this tutorial can be easily extended to other similar problems.   
+Forecasting the workload on servers or a group of servers is a common business need for technology companies that manage their own infrastructure. To reduce infrastructure cost, services running on under-utilized servers should be grouped together to run on a smaller number of machines, and services running on heavy-loaded servers should be given more machines to run. In this scenario, we focus on workload prediction for each machine (or server). Particularly, we classify the load of each server into low, medium, and high classes by using Random Forest Classification in Apache Spark ML. The machine learning techniques and workflow in this tutorial can be easily extended to other similar problems.   
 
 ## Data Description
 
-The data used in the scenario is synthesized server workload data hosted in an Azure blob storage account. You can use the data directly from the Azure blob storage. In the event the storage is used by many users simultaneously, the user can opt to use azcopy to download the data into their own storage. 
+The data used in the scenario is synthesized server workload data hosted in an Azure blob storage account that's publically accessible. The specific storage account info can be found in the `dataFile` field of [`Config\storageconfig.json`](https://github.com/Azure/MachineLearningSamples-BigData/blob/master/Config/fulldata_storageconfig.json). You can use the data directly from the Azure blob storage. In the event that the storage is used by many users simultaneously, you can opt to use [azcopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-linux) to download the data into their own storage. 
 
-The total data size is around 1 TB. Each file is around 1-3 GB and is in csv file format without header. Each row of data represents the load of a transaction on a particular server.  The detailed information of the data schema is as follows:
+The total data size is around 1 TB. Each file is around 1-3 GB and is in CSV file format without header. Each row of data represents the load of a transaction on a particular server.  The detailed information of the data schema is as follows:
 
-Column number | Field Name| Type | Description |  
+Column Number | Field Name| Type | Description |  
 |------------|------|-------------|---------------|
 1  | `SessionStart` | Datetime |	Session start time
 2  |`SessionEnd`	| Datetime Session end time
@@ -67,7 +66,6 @@ Column number | Field Name| Type | Description |
 
 
 
-
 Note while the expected data types are listed in the preceding table, due to missing values and dirty-data problems, there is no guarantee that the data types is as expected and processing of the data should take this into consideration. 
 
 
@@ -80,12 +78,12 @@ The files in this example are organized as follows.
 | `Code` | Folder | The  folder contains all the code in the example |
 | `Config` | Folder | The  folder contains the customized configuration |
 | `Image` | Folder | The folder  used to save images for the README file |
-| `Models` | Folder | The folder used to save model files downloaded from Azure Blob storage |
+| `Model` | Folder | The folder used to save model files downloaded from Azure Blob storage |
 | `Code/etl.py` | Python file | the Python file used for data preparation and feature engineering |
 | `Code/train.py` | Python file | The Python file used to train a three-class multi-classfication model  |
 | `Code/webservice.py` | Python file | The Python file used for operationalization  |
-| `Code/scoring_webservice.py` | Python file |  The Python file used for data preparation and calling the webservice |
-| `Code/O16Npreprocessing.py` | Python file | The Python file used to preprocess the data for scoring_webservice.py |
+| `Code/scoring_webservice.py` | Python file |  The Python file used for data transformation and calling the web service |
+| `Code/O16Npreprocessing.py` | Python file | The Python file used to preprocess the data for scoring_webservice.py.  |
 | `Config/storageconfig.json` | Json file | The configuration file for blob container that stores the intermediate results and model for processing and training on one-month data |
 | `Config/fulldata_storageconfig.json` | Json file |  The configuration file for blob container that stores the intermediate results and model for processing and training on full dataset|
 | `Config/webservice.json` | Json file | The configuration file for scoring_webservice.py|
