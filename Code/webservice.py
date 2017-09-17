@@ -11,7 +11,6 @@ import re
 import atexit
 import imp
 
-from util import write_blob,read_blob
 
 from pyspark import SparkConf
 from pyspark import SparkContext
@@ -128,9 +127,13 @@ def init(path="./"):
     mlModel =  RandomForestClassificationModel.load(mlModelFile)
     
     infoFile = path + 'info' 
+    info = None
     #infoDf = spark.read.csv(path + 'info', header=True, sep=',', inferSchema=True, nanValue="", mode='PERMISSIVE')
     #info = infoDf.rdd.map(lambda x: (x[0], x[1])).collectAsMap()
-    info = read_blob(infoFile, infoFile, storageContainer, storageAccount, storageKey)
+    import pickle
+    
+    with open(infoFile, 'rb') as handle:
+        info = pickle.load(handle)
     
 def run(input_df):
     import json
