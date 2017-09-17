@@ -11,6 +11,7 @@ import re
 import atexit
 import imp
 
+from util import write_blob,read_blob
 
 import pyspark
 from pyspark import SparkConf
@@ -59,12 +60,12 @@ holidayEnd='2016-06-30'
 
     
 
-mlSourceDFFile = path + 'vmlSource.parquet'
-stringIndexModelFile = path + 'vstringIndexModel'
-oneHotEncoderModelFile = path + 'voneHotEncoderModel'
-featureScaleModelFile = path + 'vfeatureScaleModel'
-mlModelFile = path + 'vmlModel'
-infoFile = "info.pickle"
+mlSourceDFFile = path + 'mlSource.parquet'
+stringIndexModelFile = path + 'stringIndexModel'
+oneHotEncoderModelFile = path + 'oneHotEncoderModel'
+featureScaleModelFile = path + 'featureScaleModel'
+mlModelFile = path + 'mlModel'
+infoFile = "info"
 
 
 # start Spark session
@@ -84,11 +85,14 @@ print ('Spark version: {}'.format(spark.version))
 print(spark.sparkContext.getConf().getAll())
 print ('****************')
 
-#info = read_blob('local.info.pickle',infoFile,storageContainer, storageAccount, storageKey)
-infoDf = spark.read.csv(path+infoFile, header=True, sep=',', inferSchema=True, nanValue="", mode='PERMISSIVE')
-info = infoDf.rdd.map(lambda x: (x[0], x[1])).collectAsMap()
-columnOnlyIndexed = [ x.strip() for x in info['columnOnlyIndexed'][1:-1].split(',') ]
-columnForEncode = [ x.strip() for x in info['columnForEncode'][1:-1].split(',') ] 
+#infoDf = spark.read.csv(path+infoFile, header=True, sep=',', inferSchema=True, nanValue="", mode='PERMISSIVE')
+#info = infoDf.rdd.map(lambda x: (x[0], x[1])).collectAsMap()
+
+info = read_blob(infoFile, infoFile, storageContainer, storageAccount, storageKey)
+
+
+columnOnlyIndexed = [ x.strip() for x in info['columnOnlyIndexed'] ]
+columnForEncode = [ x.strip() for x in info['columnForEncode'] ] 
 trainBegin = info['trainBegin']
 trainEnd   = info['trainEnd']
 testSplitStart = info['testSplitStart']
@@ -185,5 +189,5 @@ run_logger.log("Test Weighted Precision", testWeightedPrecision)
 run_logger.log("Test Weighted Recall", testWeightedRecall)
 run_logger.log("Test F1", testF1)
 
-spark.stop()
+#spark.stop()
 

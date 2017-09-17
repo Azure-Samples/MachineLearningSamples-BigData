@@ -1,6 +1,7 @@
 {
 "storageAccount": "xxx",
-"storageKey":  "xxx",
+"storageKey": "xxx",
 "storageContainer": "onemonthmodel",
-"dataFile": "wasb://data@viennabigdalimitless.blob.core.windows.net/2016/06/[a]/0/request.csv"
+"dataFile": "wasb://data@viennabigdalimitless.blob.core.windows.net/2016/06/[a]/0/request.csv",
+"duration": "ONE_MONTH"
 }

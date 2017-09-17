@@ -1,1 +1,0 @@
-{"class":"org.apache.spark.ml.feature.OneHotEncoder","timestamp":1504917943448,"sparkVersion":"2.1.1.2.6.1.3-4","uid":"OneHotEncoder_4755bf5fd05c07a1bef2","paramMap":{"inputCol":"Morning_indexed","dropLast":true,"outputCol":"Morning_indexed_encoded"}}

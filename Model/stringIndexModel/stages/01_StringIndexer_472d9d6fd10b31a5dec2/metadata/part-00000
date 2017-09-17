@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.StringIndexerModel","timestamp":1505615707042,"sparkVersion":"2.1.1.2.6.1.3-4","uid":"StringIndexer_472d9d6fd10b31a5dec2","paramMap":{"handleInvalid":"skip","outputCol":"ServerIP_indexed","inputCol":"ServerIP"}}

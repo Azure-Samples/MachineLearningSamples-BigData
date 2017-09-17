@@ -11,6 +11,8 @@ import re
 import atexit
 import imp
 
+from util import write_blob,read_blob
+
 from pyspark import SparkConf
 from pyspark import SparkContext
 from pyspark import SQLContext
@@ -87,8 +89,8 @@ def score(mlModel, newDF):
     scoring = scoring.withColumn("label", lit(0))
     input_features = ['linearTrend']
     
-    columnOnlyIndexed = [ x.strip() for x in info['columnOnlyIndexed'][1:-1].split(',') ]
-    columnForEncode = [ x.strip() for x in info['columnForEncode'][1:-1].split(',') ]
+    columnOnlyIndexed = [ x.strip() for x in info['columnOnlyIndexed'] ]
+    columnForEncode = [ x.strip() for x in info['columnForEncode'] ]
     
     input_features.extend([x  for x in columnOnlyIndexed if len(x) > 0 ])
     input_features.extend([x + '_encoded' for x in columnForEncode if len(x) > 0]) 
@@ -114,21 +116,21 @@ def init(path="./"):
 
     spark = pyspark.sql.SparkSession.builder.appName('dd').getOrCreate()
 
-    stringIndexModelFile = path + 'vstringIndexModel'
-    oneHotEncoderModelFile = path + 'voneHotEncoderModel'
-    featureScaleModelFile = path + 'vfeatureScaleModel'
+    stringIndexModelFile = path + 'stringIndexModel'
+    oneHotEncoderModelFile = path + 'oneHotEncoderModel'
+    featureScaleModelFile = path + 'featureScaleModel'
     print(featureScaleModelFile) 
     scaler = StandardScalerModel.load(featureScaleModelFile)
     ohPipelineModel =  PipelineModel.load(oneHotEncoderModelFile)
     indexModel = PipelineModel.load(stringIndexModelFile)
     
-    mlModelFile = path +'vmlModel'
+    mlModelFile = path +'mlModel'
     mlModel =  RandomForestClassificationModel.load(mlModelFile)
     
-    
-    infoDf = spark.read.csv(path + 'info.pickle', header=True, sep=',', inferSchema=True, nanValue="", mode='PERMISSIVE')
-    info = infoDf.rdd.map(lambda x: (x[0], x[1])).collectAsMap()
- 
+    infoFile = path + 'info' 
+    #infoDf = spark.read.csv(path + 'info', header=True, sep=',', inferSchema=True, nanValue="", mode='PERMISSIVE')
+    #info = infoDf.rdd.map(lambda x: (x[0], x[1])).collectAsMap()
+    info = read_blob(infoFile, infoFile, storageContainer, storageAccount, storageKey)
     
 def run(input_df):
     import json

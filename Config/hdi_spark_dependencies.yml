@@ -7,7 +7,7 @@
 # For third-party python libraries, see conda_dependencies.yml.
 
 configuration:
-  "spark.app.name": "aml-bigdata-smallcluster"
+  "spark.app.name": "aml-bigdata-hdi"
   "spark.serializer": "org.apache.spark.serializer.KryoSerializer"
   "spark.default.parallelism": 1295
   "spark.executor.memory": "36G"
@@ -15,12 +15,13 @@ configuration:
   "spark.executor.instances": 5
   "spark.driver.memory": "32G"
   "spark.driver.cores": 4
+  "spark.yarn.maxAppAttempts": 2
 repositories:
   - "https://mmlspark.azureedge.net/maven"
 packages:
   - group: "com.microsoft.ml.spark"
     artifact: "mmlspark_2.11"
-    version: "0.7"
+    version: "0.7.9"
   - group: "com.microsoft.sqlserver"
     artifact: "mssql-jdbc"
     version: "6.2.1.jre8"

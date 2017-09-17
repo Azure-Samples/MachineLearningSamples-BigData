@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.OneHotEncoder","timestamp":1505615758380,"sparkVersion":"2.1.1.2.6.1.3-4","uid":"OneHotEncoder_4359974f33c0dd72c970","paramMap":{"inputCol":"hourofday_indexed","outputCol":"hourofday_indexed_encoded","dropLast":true}}

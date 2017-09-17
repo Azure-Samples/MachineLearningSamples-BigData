@@ -4,7 +4,7 @@ import time
 import datetime
 import json
 from pandas.tseries.holiday import USFederalHolidayCalendar
-
+from util import write_blob,read_blob
 
 import pyspark
 from pyspark import SparkConf
@@ -22,6 +22,9 @@ from pyspark.ml.classification import *
 from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler, VectorIndexer
 from pyspark.ml.feature import StandardScaler, PCA, RFormula
 from pyspark.ml import Pipeline, PipelineModel
+from pyspark.sql.types import Row
+from pyspark.mllib.linalg import DenseVector
+
 
 
 from azureml.logging import get_azureml_logger
@@ -63,23 +66,23 @@ if len(sys.argv) > 2:
 #path to save the intermediate results and models
 path = "wasb://{}@{}.blob.core.windows.net/".format(storageContainer, storageAccount)
  
-mlSourceDFFile = path + 'vmlSource.parquet'
-stringIndexModelFile = path + 'vstringIndexModel'
-oneHotEncoderModelFile = path + 'voneHotEncoderModel'
-featureScaleModelFile = path + 'vfeatureScaleModel'
-infoFile =  "info.pickle"
+mlSourceDFFile = path + 'mlSource.parquet'
+stringIndexModelFile = path + 'stringIndexModel'
+oneHotEncoderModelFile = path + 'oneHotEncoderModel'
+featureScaleModelFile = path + 'featureScaleModel'
+infoFile =  "info"
 
 
 
 info = None
 
-if DURATION == 'ONE_MONTH':
+if duration == 'ONE_MONTH':
     trainBegin = '2016-06-01 00:00:00'
     trainEnd = '2016-06-30 23:59:59'
     testSplitStart = '2016-06-29 00:00:00'
     info = {"trainBegin":trainBegin, "trainEnd": trainEnd, "testSplitStart": testSplitStart, "dataFile": dataFile, "duration": duration}
 
-if DURATION == 'FULL':
+if duration == 'FULL':
     trainBegin = '2009-01-01 00:00:00'
     trainEnd = '2016-06-30 23:59:59'
     testSplitStart = '2016-06-01 00:00:00'
@@ -108,7 +111,7 @@ print ('****************')
 
 
 # load csv files in blob storage into Spark dataframe
-### import time
+# import time
 print(time.time())
 dataFileSep = ','
 print(dataFile)
@@ -136,7 +139,6 @@ if DEBUG == "FILTER_IP":
 
 
 # add per five minutes feature
-import pyspark.sql.functions as F
 seconds = 300
 seconds_window = F.from_unixtime(F.unix_timestamp('SessionStart') - F.unix_timestamp('SessionStart') % seconds)
 newdf = newdf.withColumn('SessionStartFiveMin', seconds_window.cast('timestamp'))
@@ -220,7 +222,6 @@ sqlStatement = """
 featureeddf = spark.sql(sqlStatement);
 ############################################
 # Extract some time features from "SessionStartHourTime" column
-from pyspark.sql.functions import year, month, weekofyear, dayofmonth, date_format, hour
 featureeddf = featureeddf.withColumn('year', year(featureeddf['SessionStartHourTime']))
 featureeddf = featureeddf.withColumn('month', month(featureeddf['SessionStartHourTime']))
 featureeddf = featureeddf.withColumn('weekofyear', weekofyear(featureeddf['SessionStartHourTime']))
@@ -324,7 +325,7 @@ featureeddf = featureeddf.withColumn("Morning",isMorningUdf('hourofday'))
 dfLen = featureeddf.count()
 featureeddf.persist()
 ###############################
-#lag features
+# lag features
 previousWeek=int(24*7)
 previousMonth=int(24*365.25/12)
 lags=[48, 49, 50, 51, 52, 55, 60, 67, 72, 96]
@@ -341,8 +342,6 @@ mlSourceDF=mlSourceDF.fillna(0, subset= [x for x in mlSourceDF.columns if 'Lag' 
 # after creating all lag features, we can drop NA columns on the key columns
 # drop na to avoid error in StringIndex 
 mlSourceDF = mlSourceDF.na.drop(subset=["ServerIP","SessionStartHourTime"])
-from pyspark.ml import Pipeline
-from pyspark.ml.feature import StringIndexer, OneHotEncoder
 # indexing
 columnsForIndex = ['dayofweek', 'ServerIP', 'year', 'month', 'weekofyear', 'dayofmonth', 'hourofday', 
                      'Holiday', 'BusinessHour', 'Morning']
@@ -355,7 +354,7 @@ mlSourceDF = indexModel.transform(mlSourceDF)
 # save model for operationalization
 indexModel.write().overwrite().save(stringIndexModelFile)
 
-# encode
+# encoding 
 catVarNames=[x + '_indexed' for x in columnsForIndex ]
 
 columnOnlyIndexed =   [ catVarNames[i] for i in range(0,len(catVarNames)) if len(indexModel.stages[i].labels)<2 ]
@@ -364,15 +363,14 @@ columnForEncode = [ catVarNames[i] for i in range(0,len(catVarNames)) if len(ind
 info['columnOnlyIndexed'] = columnOnlyIndexed
 info['columnForEncode'] = columnForEncode
 
-print(os.getcwd())
-#write_to_blob(info, infoFile, storageContainer, storageAccount, storageKey)
-sc = spark.sparkContext
-infoDf = sc.parallelize([
-    (k, v) for k, v in  info.items()
-]).toDF(['key', 'val_1'])
+write_blob(info, infoFile, storageContainer, storageAccount, storageKey)
+#sc = spark.sparkContext
+#infoDf = sc.parallelize([
+#    (k, v) for k, v in  info.items()
+#]).toDF(['key', 'val_1'])
 
-infoDf.show()
-infoDf.coalesce(1).write.format("com.databricks.spark.csv").mode('overwrite').option("header", "true").save(path+infoFile)
+#infoDf.show()
+#infoDf.coalesce(1).write.format("com.databricks.spark.csv").mode('overwrite').option("header", "true").save(path+infoFile)
 
 ohEncoders = [OneHotEncoder(inputCol=x, outputCol=x + '_encoded')
               for x in columnForEncode ]
@@ -382,12 +380,9 @@ mlSourceDFCat = ohPipelineModel.transform(mlSourceDF)
 ohPipelineModel.write().overwrite().save(oneHotEncoderModelFile)
 
 
-###feature scaling
+# feature scaling
 featuresForScale =  [x for x in mlSourceDFCat.columns if 'Lag' in x]
 print(len(featuresForScale))
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.feature import StandardScaler
-
 assembler = VectorAssembler(
   inputCols=featuresForScale, outputCol="features"
 )
@@ -404,8 +399,7 @@ scaler.write().overwrite().save(featureScaleModelFile)
 scaledData = scaler.transform(assembled).select('key','scaledFeatures')
 def extract(row):
     return (row.key, ) + tuple(float(x) for x in row.scaledFeatures.values)
-from pyspark.sql.types import Row
-from pyspark.mllib.linalg import DenseVector
+
 rdd = scaledData.rdd.map(lambda x: Row(key=x[0],scaledFeatures=DenseVector(x[1].toArray())))
 scaledDf = rdd.map(extract).toDF(["key"])
 # rename columns
@@ -421,5 +415,5 @@ mlSourceDFCat=mlSourceDFCat.fillna(0, subset= [x for x in mlSourceDFCat.columns 
 mlSourceDFCat=mlSourceDFCat.fillna(0, subset= ['linearTrend'])
 ## save the intermediate result for downstream work
 mlSourceDFCat.write.mode('overwrite').parquet(mlSourceDFFile)
-spark.stop()
+#spark.stop()
 
