@@ -327,7 +327,7 @@ Model management account is used to manage the models and web services. From Azu
 
 Step 3. Download and register the models.
 
-Download the models  in the "fullmodel" container to your local machine in the directory of code. Do not download the parquet data file with name "vmlSource.parquet" as it is not a model file but an intermediate compute result. You can also reuse the model files we have included in the git repository. Please visit [README.md](https://github.com/Azure/MachineLearningSamples-BigData/blob/master/README.md) for details of downloading the parquet files. Register the models as follows:
+Download the models  in the "fullmodel" container to your local machine in the directory of code. Do not download the parquet data file with name "vmlSource.parquet" as it is not a model file but an intermediate compute result. You can also reuse the model files we have included in the git repository. Please visit [DownloadModelsFromBlob.md](https://github.com/Azure/MachineLearningSamples-BigData/blob/master/Docs/DownloadModelsFromBlob.md) for details of downloading the parquet files. Register the models as follows:
 
 ```az ml model register -m  mlModel -n vmlModel -t fullmodel ```
 
