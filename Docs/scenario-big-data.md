@@ -32,9 +32,9 @@ This example illustrates how data scientists can use Azure ML Workbench to devel
 
 Along the way, we show the following key capabilities of Azure ML Workbench:
 <ul>
-    <li>Easy switching between compute targets:</li>We show how the user can set up different compute targets and use them in  experimentation. In this example, we use an Ubuntu DSVM and a HDInsight cluster as the compute targets. We also show the user how to configure the compute targets depending on the availability of resources. In particular, after scaling out the Spark cluster (that is, including more worker nodes in the Spark cluster), how the user can use the resources through Azure ML Workbench to speed up experiment runs.
+    <li>Easy switching between compute targets:</li>We show how the user can set up different compute targets and use them in experimentation. In this example, we use an Ubuntu DSVM and a HDInsight cluster as the compute targets. We also show the user how to configure the compute targets depending on the availability of resources. In particular, after scaling out the Spark cluster (that is, including more worker nodes in the Spark cluster), how the user can use the resources through Azure ML Workbench to speed up experiment runs.
     <li>Run history tracking: </li> We show the user how Azure ML Workbench can be used to track the performance of ML models and other metrics of interests.
-    <li>Operationalization of the machine learning model: </li> we show the use of the build-in tools within Azure ML Workbench to deploy the trained ML model as web service on Azure Container Service (ACS). We also show how to use the web service to get mini-batch predictions through REST API Calls. 
+    <li>Operationalization of the machine learning model: </li> we show the use of the build-in tools within Azure ML Workbench to deploy the trained ML model as web service on Azure Container Service (ACS). We also show how to use the web service to get mini-batch predictions through REST API calls. 
     <li> Support for terabytes data.
 </ul>
 
@@ -290,7 +290,7 @@ Run the script `etl.py` with fulldata on HDInsight cluster
 
 ```az ml experiment submit -a -t myhdi -c myhdi ./Code/etl.py Config/fulldata_storageconfig.json FALSE```
 
-Since this job lasts for a relatively long time (around two hours), we can use "-a" to disable output streaming. Once the job is done, in the "Run History", you can look into the driver log and also the controller log. If you have a larger cluster, you can always re-configure the configurations in `Config/hdi_spark_dependencies.yml` to use more instances or more cores. You can also see the output of this step in the "fullmodel" container in your storage account. 
+Since this job lasts for a relatively long time (around two hours), we can use "-a" to disable output streaming. Once the job is done, in the "Run History", you can look into the driver log and also the controller log. If you have a larger cluster, you can always re-configure the configurations in `Config/hdi_spark_dependencies.yml` to use more instances or more cores. For example, if you have a four-worker-hode cluster, you can increase the value of "`spark.executor.instances`" from 5 to 7. You can see the output of this step in the "fullmodel" container in your storage account. 
 
 
 ##### 3. Model training on HDInsight cluster
