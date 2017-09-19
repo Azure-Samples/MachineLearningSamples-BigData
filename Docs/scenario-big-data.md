@@ -80,6 +80,15 @@ DSVM IP address | xxx|
 
 The Ubuntu DSVM and the Azure HDInsight cluster created in the pre-requisite list are compute targets. Compute targets are the compute resource in the context of Azure ML Workbench, which might be different from the computer where Azure ML Workbench runs.   
 
+## Create a new Workbench project
+
+Create a new project using this example as a template:
+1.	Open Azure Machine Learning Workbench
+2.	On the **Projects** page, click the **+** sign and select **New Project**
+3.	In the **Create New Project** pane, fill in the information for your new project
+4.	In the **Search Project Templates** search box, type "Workload Forecasting on Terabytes Data" and select the template
+5.	Click **Create**
+
 ## Data description
 
 The data used in the scenario is synthesized server workload data and is hosted in an Azure blob storage account that's publically accessible. The specific storage account info can be found in the `dataFile` field of [`Config/storageconfig.json`](https://github.com/Azure/MachineLearningSamples-BigData/blob/master/Config/fulldata_storageconfig.json). You can use the data directly from the Azure blob storage. In the event that the storage is used by many users simultaneously, you can opt to use [azcopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-linux) to download the data into your own storage. 
@@ -216,7 +225,7 @@ By setting "PrepareEnvironment" to true, you allow Azure ML Workbench to create 
 
 #####  2. Data preparation and feature engineering on DSVM Docker
 
-Run the script `etl.py` on DSVM Docker with debug parameter ༖༗ that filters the loaded data with specific server IP addresses:
+Run the script `etl.py` on DSVM Docker with debug parameter that filters the loaded data with specific server IP addresses:
 
 ```az ml experiment submit -t dockerdsvm -c dockerdsvm ./Code/etl.py ./Config/storageconfig.json FILTER_IP```
 
@@ -393,7 +402,7 @@ The output gives a service ID, and you need to use it to get the authorization k
 
 Step 7. Call the webservice in Python code to score in mini-batches.
 
-Modify the content in `./Config/webservice.json` with the right service ID and authorization key (keep the "Bearer " in the original file and replace the "xxx" part). 
+Modify the content in `./Config/webservice.json` with the right service scoring URL and authorization key (keep the "Bearer " in the original file and replace the "xxx" part). 
 Use the following command  to get the authorization key
 
 ``` az ml service keys realtime -i $ServiceID ``` 
