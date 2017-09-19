@@ -33,7 +33,7 @@ This example illustrates how data scientists can use Azure ML Workbench to devel
 Along the way, we show the following key capabilities of Azure ML Workbench:
 <ul>
     <li>Easy switching between compute targets:</li>We show how the user can set up different compute targets and use them in  experimentation. In this example, we use an Ubuntu DSVM and a HDInsight cluster as the compute targets. We also show the user how to configure the compute targets depending on the availability of resources. In particular, after scaling out the Spark cluster (that is, including more worker nodes in the Spark cluster), how the user can use the resources through Azure ML Workbench to speed up experiment runs.
-    <li>Run History tracking: </li> We show the user how Azure ML Workbench can be used to track the performance of ML models and other metrics of interests.
+    <li>Run history tracking: </li> We show the user how Azure ML Workbench can be used to track the performance of ML models and other metrics of interests.
     <li>Operationalization of the machine learning model: </li> we show the use of the build-in tools within Azure ML Workbench to deploy the trained ML model as web service on Azure Container Service (ACS). We also show how to use the web service to get mini-batch predictions through REST API Calls. 
     <li> Support for terabytes data.
 </ul>
@@ -59,9 +59,9 @@ DSVM IP address | xxx|
  User name  | xxx|
  Password   | xxx|
 
- You can choose to use any VM with [Docker Engine](https://docs.docker.com/engine/) installed.
+ You can choose to use any virtual machine (VM) with [Docker Engine](https://docs.docker.com/engine/) installed.
 
-* A HDInsight Spark Cluster with HDP version 3.6 and Spark version 2.1.1. Visit [Create an Apache Spark cluster in Azure HDInsight] (https://docs.microsoft.com/en-us/azure/hdinsight/hdinsight-apache-spark-jupyter-spark-sql) for details of how to create HDInsight clusters. We recommend using a three-worker cluster with each worker having 16 cores and 112 GB of memory. You need the cluster name, SSH user name, and password to try out this example. Please save the following table with the Azure HDInsight cluster info for later steps:
+* A HDInsight Spark Cluster with HDP version 3.6 and Spark version 2.1.1. Visit [Create an Apache Spark cluster in Azure HDInsight] (https://docs.microsoft.com/en-us/azure/hdinsight/hdinsight-apache-spark-jupyter-spark-sql) for details of how to create HDInsight clusters. We recommend using a three-worker cluster with each worker having 16 cores and 112 GB of memory. Or you can just choose VM type "D12 v2" for head node and "D14 v2" for the worker node. You need the cluster name, SSH user name, and password to try out this example. Please save the following table with the Azure HDInsight cluster info for later steps:
 
  Field Name| Value |  
  |------------|------|
@@ -220,7 +220,18 @@ Run the script `etl.py` on DSVM Docker with debug parameter `FILTER_IP` which fi
 
 ```az ml experiment submit -t dockerdsvm -c dockerdsvm ./Code/etl.py ./Config/storageconfig.json FILTER_IP```
 
-Navigate to the side panel, click "Run" to see the run history of  `etl.py`. Notice that the run time is around two minutes. If you plan to change your code to include new features , providing FILTER_IP as the second arguments provides a faster iteration. You might need to run this step multiple times when dealing with your own machine learning problems to explore the dataset or create new features. With the customized restriction on what data to load and further filtering of what data to process, you can  thus speed up the iteration process in your model development. As you experiment, you should periodically save the changes in your code to the git repository.  
+Navigate to the side panel, click "Run" to see the run history of  `etl.py`. Notice that the run time is around two minutes. If you plan to change your code to include new features , providing FILTER_IP as the second arguments provides a faster iteration. You might need to run this step multiple times when dealing with your own machine learning problems to explore the dataset or create new features. With the customized restriction on what data to load and further filtering of what data to process, you can  thus speed up the iteration process in your model development. As you experiment, you should periodically save the changes in your code to the git repository.  Note that we used the following code in `etl.py` to enable the access to the private container:
+
+```python
+def attach_storage_container(spark, account, key):
+    config = spark._sc._jsc.hadoopConfiguration()
+    setting = "fs.azure.account.key." + account + ".blob.core.windows.net"
+    if not config.get(setting):
+        config.set(setting, key)
+
+# attach the blob storage to the spark cluster or VM so that the storage can be accessed by the cluste or VM        
+attach_storage_container(spark, storageAccount, storageKey)
+```
 
 
 Next,  run the script `etl.py` on DSVM Docker without debug parameter FILTER_IP
@@ -262,6 +273,7 @@ Prepare the project environment by running:
 
 ```az ml experiment prepare -c myhdi```
 
+This step can take up to seven minutes.
 
 ##### 2. Data preparation and feature engineering on HDInsight cluster
 
@@ -302,7 +314,7 @@ In addition, go to your github repository, a new branch with name staring with "
 
 ### Operationalization
 
-In this section, we operationalize the model we created in the previous steps as web service and demo how we can use the web service to predict workload. We use Azure ML Operationalization CLIs to package the code and dependencies as Docker images and publish the model as containerized web service. Refer to  [Operationalization Overview](https://github.com/Azure/Machine-Learning-Operationalization/blob/master/documentation/operationalization-overview.md) for more details. You can use the commandline prompt in Azure ML Workbench to run the Azure ML Operationalization CLIs.  You can also run the  Azure ML Operationalization CLIs on Ubuntu Linux by following the [installation guide](https://github.com/Azure/Machine-Learning-Operationalization/blob/master/documentation/install-on-ubuntu-linux.md). 
+In this section, we operationalize the model we created in the previous steps as web service and demo how we can use the web service to predict workload. We use Azure ML Operationalization Command-Line Interfaces (CLIs) to package the code and dependencies as Docker images and publish the model as containerized web service. Refer to  [Operationalization Overview](https://github.com/Azure/Machine-Learning-Operationalization/blob/master/documentation/operationalization-overview.md) for more details. You can use the commandline prompt in Azure ML Workbench to run the Azure ML Operationalization CLIs.  You can also run the  Azure ML Operationalization CLIs on Ubuntu Linux by following the [installation guide](https://github.com/Azure/Machine-Learning-Operationalization/blob/master/documentation/install-on-ubuntu-linux.md). 
 
 
 Choose a unique string as the environment for operationalization and we use the string "[unique]" to represent the string you choose.
@@ -312,14 +324,27 @@ Step 1. Create the environment for operationalization and create the  resource g
 
 ```az ml env setup -c -n [unique] --location eastus2 --cluster -z 5 --yes ```
 
+
+Note we choose to use Azure Container Service as the environment by using  `--cluster` in `az ml env setup` command. We choose to operationalize the machine learning model on [Azure Container Service](https://docs.microsoft.com/en-us/azure/container-service/kubernetes/container-service-intro-kubernetes)  as it uses [Kubernetes](https://kubernetes.io/) for automating deployment, scaling, and management of containerized applications.
+This command takes around twenty minutes to run. Use 
+
+```az ml env show -g [unique]rg -n [unique]```
+
+to check if the deployment is finished successfully.
+
+Set the deployment environment as the one you just created by running
+
 ```az ml env set -g [unique]rg -n [unique] ```
 
 
-Note we choose to use Azure Container Service as the environment by using  `--cluster` in `az ml env setup` command. We choose to operationalize the machine learning model on [Azure Container Service](https://docs.microsoft.com/en-us/azure/container-service/kubernetes/container-service-intro-kubernetes)  as it uses [Kubernetes](https://kubernetes.io/) for automating deployment, scaling, and management of containerized applications.
 
-Step 2. Create the model management account and use the model management account.
+Step 2. Create a model management account and use the model management account.
+
+Create a  model management account by running
 
 ```az ml account modelmanagement create --location  eastus2 -n [unique]acc -g [unique]rg --sku-instances 4 --sku-name S3 ```
+
+Use the model management for operationalization by running
 
 ```az ml account modelmanagement set  -n [unique]acc -g [unique]rg ```
 
@@ -327,7 +352,7 @@ Model management account is used to manage the models and web services. From Azu
 
 Step 3. Download and register the models.
 
-Download the models  in the "fullmodel" container to your local machine in the directory of code. Do not download the parquet data file with name "vmlSource.parquet" as it is not a model file but an intermediate compute result. You can also reuse the model files we have included in the git repository. Please visit [DownloadModelsFromBlob.md](https://github.com/Azure/MachineLearningSamples-BigData/blob/master/Docs/DownloadModelsFromBlob.md) for details of downloading the parquet files. Register the models as follows:
+Download the models  in the "fullmodel" container to your local machine in the directory of code. Do not download the parquet data file with name "vmlSource.parquet" as it is not a model file but an intermediate compute result. You can also reuse the model files we have included in the git repository. Please visit [DownloadModelsFromBlob.md](https://github.com/Azure/MachineLearningSamples-BigData/blob/master/Docs/DownloadModelsFromBlob.md) for details of downloading the parquet files. Go to the `Model` folder in the CLI and register the models as follows:
 
 ```az ml model register -m  mlModel -n vmlModel -t fullmodel ```
 
@@ -343,15 +368,16 @@ The output of each command gives a model ID which is needed in the next step.
 
 Step 4. Create manifest for the web service.
 
-Manifest is the recipe which is used to create of the Docker image for web service containers. It includes the code for the web service, all the machine learning models and run-time environemnt dependencies. Run the command line:
+Manifest is the recipe which is used to create of the Docker image for web service containers. It includes the code for the web service, all the machine learning models and run-time environemnt dependencies.  Go to the `Code` folder in the CLI and  run the command line:
 
-```az ml manifest create -n $webserviceName -f webservice.py -r spark-py -c conda_dependencies_webservice.yml -i $modelID1 -i $modelID2 -i $modelID3 -i $modelID4 -i $modelID5```
+```az ml manifest create -n $webserviceName -f webservice.py -r spark-py -c ../Config/conda_dependencies_webservice.yml -i $modelID1 -i $modelID2 -i $modelID3 -i $modelID4 -i $modelID5```
 
 The output gives a manifest ID for the next step. 
 
-You can test webservice.py by running 
+Stay in the `Code` directory, and you can test webservice.py by running 
 
-```az ml experiment submit -t dockerdsvm -c dockerdsvm ./Code/webservice.py```
+```az ml experiment submit -t dockerdsvm -c dockerdsvm webservice.py```
+
 
 Step 5. Create a Docker image. 
 
@@ -372,11 +398,11 @@ Use the following command  to get the authorization key
 
 ``` az ml service keys realtime -i $ServiceID ``` 
 
- and use the following command  to get the service URL
+ and use the following command  to get the service scoring URL
 
 ` az ml service usage realtime -i $ServiceID`.
 
-You can test the web service for mini-batch scoring by using
+Go to the root directory of your project, and test the web service for mini-batch scoring by using
 
 ```az ml experiment submit -t dockerdsvm -c dockerdsvm ./Code/scoring_webservice.py ./Config/webservice.json```
 
