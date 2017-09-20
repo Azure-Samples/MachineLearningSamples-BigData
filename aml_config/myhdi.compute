@@ -1,0 +1,5 @@
+address: xxx-ssh.azurehdinsight.net
+password: 
+type: cluster
+username: sshuser
+yarnDeployMode: cluster

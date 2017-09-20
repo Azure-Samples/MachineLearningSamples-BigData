@@ -1,0 +1,10 @@
+ArgumentVector:
+- $file
+CondaDependenciesFile: Config/conda_dependencies.yml
+EnvironmentVariables: null
+Framework: PySpark
+PrepareEnvironment: true
+SparkDependenciesFile: Config/hdi_spark_dependencies.yml
+Target: myhdi
+TrackedRun: true
+UseSampling: true
