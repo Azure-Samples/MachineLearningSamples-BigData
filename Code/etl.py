@@ -1,3 +1,10 @@
+"""
+This script performs the data loading, data preparation and feature enginnering.
+It takes two arguments:
+1. The configuration file which contains the Azure storage account name, key and data source location. By default, it is "./Config/storageconfig.json"
+2. a DEBUG argument which is a string. If set to "FILTER_IP", the filtering down two IP addresses takes effect. By default, it is "FALSE". 
+"""
+
 import os
 import sys
 import time
@@ -33,10 +40,7 @@ from azureml.logging import get_azureml_logger
 run_logger = get_azureml_logger()
 
 
-
-
-
-
+# load storage configuration
 configFilename = "./Config/storageconfig.json"
 
 if len(sys.argv) > 1:
@@ -65,8 +69,11 @@ if len(sys.argv) > 2:
 # 'FULL' use full dataset with duplicated data copies    
 #path to save the intermediate results and models
 path = "wasb://{}@{}.blob.core.windows.net/".format(storageContainer, storageAccount)
- 
+
+# location of the intermediate results 
 mlSourceDFFile = path + 'mlSource.parquet'
+
+# location of the models
 stringIndexModelFile = path + 'stringIndexModel'
 oneHotEncoderModelFile = path + 'oneHotEncoderModel'
 featureScaleModelFile = path + 'featureScaleModel'
@@ -120,7 +127,7 @@ df = spark.read.csv(dataFile, header=False, sep=dataFileSep, inferSchema=True, n
 print(time.time())
 
 
-
+# rename the columns
 oldnames = df.columns
 
 newColumns=['TrafficType',"SessionStart","SessionEnd", "ConcurrentConnectionCounts", "MbytesTransferred", 
@@ -134,16 +141,11 @@ if DEBUG == "FILTER_IP":
     filterdf = newdf.filter(newdf["ServerIP"].isin(IPList) == True)
     newdf = filterdf
 
-
-
-
-
 # add per five minutes feature
 seconds = 300
 seconds_window = F.from_unixtime(F.unix_timestamp('SessionStart') - F.unix_timestamp('SessionStart') % seconds)
 newdf = newdf.withColumn('SessionStartFiveMin', seconds_window.cast('timestamp'))
 
-##################################
 # aggreagte per five minutes
 newdf.createOrReplaceTempView("newdf")
 sqlStatement = """
@@ -192,12 +194,10 @@ joindf = joindf.withColumn('SessionStartHourTime', hour_window.cast('timestamp')
 
 joindf = joindf.withColumn("key", concat(joindf.ServerIP,lit("_"),joindf.SessionStartHourTime.cast('string')))
 joindf.cache()
-#################################################################################
-
 
 joindf = joindf.fillna(0, subset=['SumTotalLoad'])
 
-
+# get the peakload every five minutes (non-overlapping) per hour
 maxByGroup = (joindf.rdd
   .map(lambda x: (x[-1], x))  # Convert to PairwiseRD
   # Take maximum of the passed arguments by the last element (key)
@@ -207,7 +207,7 @@ maxByGroup = (joindf.rdd
   .reduceByKey(lambda x1, x2: max(x1, x2, key=lambda x: x[4])) 
   .values()) # Drop keys
 aggregatemaxdf = maxByGroup.toDF()
-# get the peakload every five minutes (non-overlapping) per hour
+
 featureeddf = None
 aggregatemaxdf.createOrReplaceTempView("aggregatemaxdf")
 sqlStatement = """
@@ -234,7 +234,7 @@ featureeddf = featureeddf.withColumn('dayofweek', dayofweek )
 day = 3600*24  
 day_window = F.from_unixtime(F.unix_timestamp('SessionStartHourTime') - F.unix_timestamp('SessionStartHourTime') % day)
 featureeddf = featureeddf.withColumn('SessionStartDay', day_window)
-# aggreagte per daily
+# aggreagte daily
 featureeddf.createOrReplaceTempView("featureeddf")
 sqlStatement = """
     SELECT ServerIP d_ServerIP, SessionStartDay d_SessionStartDay,
@@ -270,7 +270,7 @@ featureeddf.show(1)
 featureeddf.persist()
 featureeddf = featureeddf.select([x for x in featureeddf.columns if 'd_' not in x ])
 
-##########################################################
+################################
 trainBeginTimestamp = int(datetime.datetime.strftime(  datetime.datetime.strptime(info['trainBegin'], "%Y-%m-%d %H:%M:%S") ,"%s"))
 def linearTrend(x):
     if x is None:
@@ -354,7 +354,7 @@ mlSourceDF = indexModel.transform(mlSourceDF)
 # save model for operationalization
 indexModel.write().overwrite().save(stringIndexModelFile)
 
-# encoding 
+# encoding for categorical features
 catVarNames=[x + '_indexed' for x in columnsForIndex ]
 
 columnOnlyIndexed =   [ catVarNames[i] for i in range(0,len(catVarNames)) if len(indexModel.stages[i].labels)<2 ]
@@ -363,14 +363,8 @@ columnForEncode = [ catVarNames[i] for i in range(0,len(catVarNames)) if len(ind
 info['columnOnlyIndexed'] = columnOnlyIndexed
 info['columnForEncode'] = columnForEncode
 
+# save info to blob storage
 write_blob(info, infoFile, storageContainer, storageAccount, storageKey)
-#sc = spark.sparkContext
-#infoDf = sc.parallelize([
-#    (k, v) for k, v in  info.items()
-#]).toDF(['key', 'val_1'])
-
-#infoDf.show()
-#infoDf.coalesce(1).write.format("com.databricks.spark.csv").mode('overwrite').option("header", "true").save(path+infoFile)
 
 ohEncoders = [OneHotEncoder(inputCol=x, outputCol=x + '_encoded')
               for x in columnForEncode ]
@@ -380,7 +374,7 @@ mlSourceDFCat = ohPipelineModel.transform(mlSourceDF)
 ohPipelineModel.write().overwrite().save(oneHotEncoderModelFile)
 
 
-# feature scaling
+# feature scaling for numeric features
 featuresForScale =  [x for x in mlSourceDFCat.columns if 'Lag' in x]
 print(len(featuresForScale))
 assembler = VectorAssembler(
