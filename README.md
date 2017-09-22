@@ -13,7 +13,7 @@ The public GitHub repository for this real world scenario contains all the code 
 
 ## Overview
 
-Forecasting the workload on servers is a common business need for technology companies that manage their own infrastructure. A key challenge in forecasting the workload on servers is the huge amount of data. In this scenario, we use 1-TB synthesized data to demonstrate how data scientists can use Azure ML Workbench to develop solutions that require use of big data. We show how a user by using Azure ML Workbench can follow a happy path of starting from a sample of a large dataset, iterating through data preparation, feature engineering and machine learning, and then eventually extending the process to the entire large dataset.
+Forecasting workload on servers is a common business need for technology companies that manage their own infrastructure. A key challenge in forecasting the workload on servers is the huge amount of data. In this scenario, we use 1-TB synthesized data to demonstrate how data scientists can use Azure ML Workbench to develop solutions that require use of big data. We show how a user by using Azure ML Workbench can follow a happy path of starting from a sample of a large dataset, iterating through data preparation, feature engineering and machine learning, and then eventually extending the process to the entire large dataset.
 
 
 ## Key components needed to run this scenario
