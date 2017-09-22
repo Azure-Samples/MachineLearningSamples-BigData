@@ -1,9 +1,13 @@
-"""
-This script performs the data loading, data preparation and feature enginnering.
-It takes two arguments:
-1. The configuration file which contains the Azure storage account name, key and data source location. By default, it is "./Config/storageconfig.json"
-2. a DEBUG argument which is a string. If set to "FILTER_IP", the filtering down two IP addresses takes effect. By default, it is "FALSE". 
-"""
+#################################
+# This script performs the data loading, data preparation and feature enginnering.
+# It takes two arguments:
+# 1. The configuration file which contains the Azure 
+#    storage account name, key and data source location. 
+#    By default, it is "./Config/storageconfig.json"
+# 2. a DEBUG argument which is a string. 
+#    If set to "FILTER_IP", the filtering down two IP addresses takes effect. 
+#    By default, it is "FALSE". 
+################################
 
 import os
 import sys

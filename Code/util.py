@@ -1,3 +1,11 @@
+#####################################
+# this script contains functions related to 
+# blob storage operation
+#####################################
+
+#################################
+# attach a spark session to the storage account
+################################
 def attach_storage_container(spark, account, key):
     config = spark._sc._jsc.hadoopConfiguration()
     setting = "fs.azure.account.key." + account + ".blob.core.windows.net"
@@ -6,12 +14,12 @@ def attach_storage_container(spark, account, key):
 
 
 #########################################
+# write info to the blob with name "filename"
+#########################################
 def write_blob(info, filename, container, account, key):
     from azure.storage.blob import BlockBlobService
     import glob
     import os
-    ## Create a new container if necessary, otherwise you can use an existing container
-    # blobService.create_container('<container name>')
 
     # Define your blob service
     blobService = BlockBlobService(account_name=account, account_key=key)
@@ -26,6 +34,10 @@ def write_blob(info, filename, container, account, key):
         print(os.path.abspath(name))
         blobService.create_blob_from_path(container, filename, name)
 
+#########################################
+# read the content of the blob with name "filename"
+# return the content 
+#########################################
 def read_blob(localFilename,blobName,container, account, key):
     from azure.storage.blob import BlockBlobService
     import glob

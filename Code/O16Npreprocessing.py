@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Aug 18 11:14:29 2017
-
-@author: daden
+The script is used to preprocessing the 2016 May and June raw data.
+It generates the daily and hourly stats on the load features.
+It's not required to run in this tutorial and can be used as reference for data pipelines.
 """
 
 import numpy as np
@@ -39,7 +39,6 @@ from pyspark.ml import Pipeline, PipelineModel
 from pyspark.ml.classification import RandomForestClassificationModel
 import datetime
 
-os.environ["PYTHON_EGG_CACHE"] = "~/"
 
 spark = pyspark.sql.SparkSession.builder.appName('O16NPreprosessing').getOrCreate()
 
@@ -81,10 +80,11 @@ dataFileSep = ','
 df = spark.read.csv(featureStartFile, header=False, sep=dataFileSep, inferSchema=True, nanValue="", mode='PERMISSIVE')
 df.cache()
 
+
+
+# rename the columns
 from functools import reduce
 data = df.rdd
-
-
 oldColumns = df.columns
 newColumns=['TrafficType',"SessionStart","SessionEnd", "ConcurrentConnectionCounts", "MbytesTransferred", 
             "ServiceGrade","HTTP1","ServerType", 
@@ -109,7 +109,7 @@ joindf = timeDf.join(newdf, newdf.SessionStartFiveMin==timeDf.Time, "outer")
 hour = 3600  
 hour_window = F.from_unixtime(F.unix_timestamp('SessionStart') - F.unix_timestamp('SessionStart') % hour)
 joindf = joindf.withColumn('SessionStartHour', hour_window)
-#spark.catalog.clearCache()
+
 
 # aggreagte per five minutes
 joindf.createOrReplaceTempView("joindf")
@@ -130,6 +130,7 @@ aggregatedf = aggregatedf.withColumn("key", concat(aggregatedf.ServerIP,lit("_")
 aggregatedf = aggregatedf.fillna(0, subset=['SumTotalLoad'])
 
 
+# get the peakload every five minutes (non-overlapping) per hour
 maxByGroup = (aggregatedf.rdd
   .map(lambda x: (x[-1], x))  # Convert to PairwiseRD
   # Take maximum of the passed arguments by the last element (key)
@@ -139,7 +140,7 @@ maxByGroup = (aggregatedf.rdd
   .reduceByKey(lambda x1, x2: max(x1, x2, key=lambda x: x[3])) 
   .values()) # Drop keys
 aggregatemaxdf = maxByGroup.toDF()
-# get the peakload every five minutes (non-overlapping) per hour
+
 featureeddf = None
 aggregatemaxdf.createOrReplaceTempView("aggregatemaxdf")
 sqlStatement = """
@@ -158,14 +159,8 @@ featureeddf = featureeddf.withColumn('year', year(featureeddf['SessionStartHourT
 featureeddf = featureeddf.withColumn('month', month(featureeddf['SessionStartHourTime']))
 featureeddf = featureeddf.withColumn('dayofmonth', dayofmonth(featureeddf['SessionStartHourTime']))
 featureeddf = featureeddf.withColumn('hourofday', hour(featureeddf['SessionStartHourTime']))
-
-
-
-#HourlyDFFile = 'wasb://o16n@viennabigdalimitless.blob.core.windows.net/hourly/'
+HourlyDFFile = 'wasb://o16n@viennabigdalimitless.blob.core.windows.net/hourlyfeature/'
 featureeddf.write.mode('overwrite').partitionBy("year", "month", "dayofmonth").parquet(HourlyDFFile)
-
-
-
 
 
 # add day feature
@@ -175,7 +170,7 @@ featureeddf = featureeddf.withColumn('SessionStartDay', day_window)
 
 
 
-# aggreagte per five minutes
+# aggregate daily
 featureeddf.createOrReplaceTempView("featureeddf")
 sqlStatement = """
     SELECT ServerIP d_ServerIP, SessionStartDay d_SessionStartDay,
@@ -189,20 +184,6 @@ sqlStatement = """
 dailyStatisticdf = spark.sql(sqlStatement);
 dailyStatisticdf = dailyStatisticdf.withColumn('year', year(dailyStatisticdf['d_SessionStartDay']))
 dailyStatisticdf = dailyStatisticdf.withColumn('month', month(dailyStatisticdf['d_SessionStartDay']))    
-#lag features
-#previous week average
-#rolling mean features
-#rollingLags = [2]
-#lagColumns = [x for x in dailyStatisticdf.columns if 'Daily' in x]
-#print(lagColumns)
-
-#windowSize=[7]
-#for w in windowSize:
-#    for i in rollingLags:
-#        wSpec = Window.partitionBy('d_ServerIP').orderBy('d_SessionStartDay').rowsBetween(-i-w, -i-1)
-#        for j in lagColumns:
-#            dailyStatisticdf = dailyStatisticdf.withColumn(j+'Lag'+str(i)+'Win'+str(w),F.avg(col(j)).over(wSpec) )
-
-DailyDFFile = 'wasb://o16n@viennabigdalimitless.blob.core.windows.net/daily/'
+DailyDFFile = 'wasb://o16n@viennabigdalimitless.blob.core.windows.net/dailyfeature/'
 dailyStatisticdf.write.mode('overwrite').partitionBy("year", "month").parquet(DailyDFFile)
             
