@@ -78,12 +78,12 @@ def getScoreTime(scoreBegin):
 def readData(scoreBegin,serverIP, path):
     #read daily statistics and hourly statistics from public container specified by path 
     scoreBegin, scoreEnd, featureBegin, scoreEndDateTime,featureBeginDateTime, featureEndDateTime = getScoreTime(scoreBegin)
-    featureStartFile = path + "hourlyfeature/{0:04}/{1:02}/*/".format(featureBeginDateTime.year, featureBeginDateTime.month)
-    featureEndFile = path + "hourlyfeature/{0:04}/{1:02}/*/".format(featureEndDateTime.year, featureEndDateTime.month)
+    featureStartFile = path + "hourlyfeature/{0:04}/{1:02}/*".format(featureBeginDateTime.year, featureBeginDateTime.month)
+    featureEndFile = path + "hourlyfeature/{0:04}/{1:02}/*".format(featureEndDateTime.year, featureEndDateTime.month)
     print(featureStartFile)
     print(featureEndFile)
-    dailyStartFile = path + "dailyfeature/{0:04}/{1:02}/".format(featureBeginDateTime.year, featureBeginDateTime.month)
-    dailyEndFile = path + "dailyfeature/{0:04}/{1:02}/".format(featureEndDateTime.year, featureEndDateTime.month)
+    dailyStartFile = path + "dailyfeature/{0:04}/{1:02}/*".format(featureBeginDateTime.year, featureBeginDateTime.month)
+    dailyEndFile = path + "dailyfeature/{0:04}/{1:02}/*".format(featureEndDateTime.year, featureEndDateTime.month)
     print(dailyStartFile)
     print(dailyEndFile)
     
