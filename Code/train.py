@@ -1,3 +1,12 @@
+########################################
+# This script uses the result from etl.py 
+# to train a multi-class Random Forest Classification model
+# It takes one argument: 
+# The configuration file which contains 
+# the Azure storage account name, key and data source location. 
+# By default, it is "./Config/storageconfig.json"
+########################################
+
 import numpy as np
 import pandas as pd
 import os
@@ -29,7 +38,8 @@ from pyspark.ml.classification import *
 from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler, VectorIndexer
 from pyspark.ml.feature import StandardScaler, PCA, RFormula
 from pyspark.ml import Pipeline, PipelineModel
-
+from pyspark.ml.classification import RandomForestClassifier
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 
 
 from azureml.logging import get_azureml_logger
@@ -37,7 +47,7 @@ from azureml.logging import get_azureml_logger
 # initialize logger
 run_logger = get_azureml_logger()
 
-    
+# load configuration    
 configFilename = "./Config/storageconfig.json"
 
 if len(sys.argv) > 1:
@@ -59,7 +69,7 @@ holidayEnd='2016-06-30'
 
 
     
-
+# location of the intermediate result and models
 mlSourceDFFile = path + 'mlSource.parquet'
 stringIndexModelFile = path + 'stringIndexModel'
 oneHotEncoderModelFile = path + 'oneHotEncoderModel'
@@ -85,9 +95,7 @@ print ('Spark version: {}'.format(spark.version))
 print(spark.sparkContext.getConf().getAll())
 print ('****************')
 
-#infoDf = spark.read.csv(path+infoFile, header=True, sep=',', inferSchema=True, nanValue="", mode='PERMISSIVE')
-#info = infoDf.rdd.map(lambda x: (x[0], x[1])).collectAsMap()
-
+# load info from blob storage
 info = read_blob(infoFile, infoFile, storageContainer, storageAccount, storageKey)
 
 
@@ -106,12 +114,10 @@ else:
 
 
 
-################################
 
-# load result from 
+# load the intermediate compute result from blob storage 
 mlSourceDFCat = spark.read.parquet(mlSourceDFFile)
-#####################################
-##Label data
+# label data
 def LoadtoLabel(num):
     if num is None: return 1
     if num <= lowThreshhold: return 1
@@ -121,7 +127,7 @@ def LoadtoLabel(num):
 LoadtoLabelUdf = udf(LoadtoLabel, IntegerType())
 mlSourceDFCat = mlSourceDFCat.withColumn("label", LoadtoLabelUdf(mlSourceDFCat['peakLoad']))
 
-########################
+# split the data into training data and test data
 training = mlSourceDFCat.filter(mlSourceDFCat.SessionStartHourTime < lit(testSplitStart).cast(TimestampType()) )
 testing = mlSourceDFCat.filter(mlSourceDFCat.SessionStartHourTime >= lit(testSplitStart).cast(TimestampType()) )
 print(training.count())
@@ -129,8 +135,7 @@ print(testing.count())
 training.groupby('label').count().show()
 testing.groupby('label').count().show()
 
-##########################
-# encode
+# select features
 input_features = ['linearTrend']
 input_features.extend([x  for x in columnOnlyIndexed if len(x) > 0 ])
 input_features.extend([x + '_encoded' for x in columnForEncode if len(x) > 0]) 
@@ -138,20 +143,17 @@ input_features.extend([x for x in mlSourceDFCat.columns if 'Lag' in x ])
 
 print(input_features)
 
-#######################
-##machine learning
+# training 
 va = VectorAssembler(inputCols=input_features, outputCol='features')
 training_assembled = va.transform(training).select('ServerIP', 'SessionStartHourTime','label','features')
-from pyspark.ml.classification import RandomForestClassifier
 rf = RandomForestClassifier(numTrees=100, maxDepth=8, seed=42, labelCol="label", featuresCol="features" )
 model = rf.fit(training_assembled)
 numFeatures = model.numFeatures
 print("num of features is %g" % numFeatures)
 
 model.write().overwrite().save(mlModelFile)
-## evaluate training result
+# evaluate training result
 pred_class_rf = model.transform(training_assembled.select(col('features'),col('Label')))
-from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 evaluator_train = MulticlassClassificationEvaluator(predictionCol="prediction",labelCol="Label")
 accuracy = evaluator_train.evaluate(pred_class_rf, {evaluator_train.metricName: "accuracy"})
 weightedPrecision = evaluator_train.evaluate(pred_class_rf, {evaluator_train.metricName: "weightedPrecision"})
@@ -167,7 +169,7 @@ run_logger.log("Train Weighted Precision", weightedPrecision)
 run_logger.log("Train Weighted Recall", weightedRecall)
 run_logger.log("Train F1", F1)
 
-## evaluate test result
+# evaluate test result
 test_assembled = va.transform(testing).select('ServerIP', 'SessionStartHourTime','label','features')
 pred_test_class_rf = model.transform(test_assembled.select(col('features'),col('label')))
 #predictions_rf.groupby('peakload', 'prediction').count().show()

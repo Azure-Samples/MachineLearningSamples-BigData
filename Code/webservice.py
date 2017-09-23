@@ -1,5 +1,8 @@
+#############################################
+# This is the script for web service which uses the trained model for real-time scoring.
+#############################################
+
 import numpy as np
-import pandas as pd
 import pyspark
 import os
 import urllib
@@ -19,7 +22,6 @@ import pyspark.sql.functions as F
 from pyspark.sql.functions import concat, col, udf, lag, date_add, explode, lit, unix_timestamp
 from pyspark.sql.functions import year, month, weekofyear, dayofmonth, hour, date_format 
 from pyspark.sql.types import *
-from pyspark.sql.types import DateType,TimestampType
 from pyspark.sql.dataframe import *
 from pyspark.sql.window import Window
 from pyspark.sql import Row
@@ -27,15 +29,21 @@ from pyspark.ml.classification import *
 from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler, VectorIndexer
 from pyspark.ml.feature import StandardScaler, PCA, RFormula
 from pyspark.ml import Pipeline, PipelineModel
-from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.feature import StandardScaler, StandardScalerModel
-from pyspark.ml import Pipeline, PipelineModel
 from pyspark.ml.classification import RandomForestClassificationModel
+from pyspark.mllib.linalg import DenseVector
 import datetime
 import json
 from pandas import DataFrame
+import pickle
 
 
+#############################################
+# process the input data frame:
+# (1) index the non-numeric  features, 
+# (2) encode the indexed features and 
+# (3) scale the numeric features
+#############################################
 def processDf(df):
     mlSourceDF = df
     mlSourceDF.printSchema()
@@ -46,11 +54,12 @@ def processDf(df):
     mlSourceDF=mlSourceDF.fillna(0, subset= [x for x in columnsForIndex ])
     scoreDF = mlSourceDF 
 
-
-    from pyspark.ml.feature import StringIndexer, OneHotEncoder
     # indexing    
     scoreDF = indexModel.transform(scoreDF)
+    # encoding
     scoreDFCat = ohPipelineModel.transform(scoreDF)
+
+    # feature scaling
     featuresForScale =  [x for x in scoreDFCat.columns if 'Lag' in x]
     assembler = VectorAssembler(
       inputCols=featuresForScale, outputCol="features"
@@ -79,6 +88,11 @@ def processDf(df):
     newDF = noScaledMLSourceDF.join(scaledOutcome, (noScaledMLSourceDF.key==scaledOutcome.scaledKey), 'outer')
     return newDF
     
+#############################################
+# make prediciton based on the input data frame
+# The 1st argument is the loaded machine learning model
+# The 2nd argument is the dataframe with proper features 
+#############################################
 def score(mlModel, newDF):
     ScoreDFCat = newDF
     ScoreDFCat=ScoreDFCat.fillna(0, subset= [x for x in ScoreDFCat.columns if 'Lag' in x])
@@ -99,26 +113,26 @@ def score(mlModel, newDF):
 
     # Assemble features  !!! Values to assemble cannot be null
     va = VectorAssembler(inputCols=input_features, outputCol='features')
-    #train_downsampled_assembled = va.transform(train_downsampled).select('ServerIP', 'SessionStartHourTime','Label','features')
     scoring_assembled = va.transform(scoring).select('ServerIP', 'SessionStartHourTime', 'features','label')
-    
     pred_class_rf = mlModel.transform(scoring_assembled.select('features','label', 'ServerIP', 'SessionStartHourTime'))
 
-    #predictions_rf.groupby('peakload', 'prediction').count().show()
+    # predictions_rf.groupby('peakload', 'prediction').count().show()
     predictionAndLabels = pred_class_rf.select("ServerIP", "SessionStartHourTime", "prediction")
     return predictionAndLabels
 
-
-
+####################################################
+# Initialization of the web service:
+# start spark session
+# load the models
+####################################################
 def init(path="./"):
     global indexModel, ohPipelineModel, scaler, mlModel, info, spark
-
-    spark = pyspark.sql.SparkSession.builder.appName('dd').getOrCreate()
-
+    # start spark session
+    spark = pyspark.sql.SparkSession.builder.appName('scoring').getOrCreate()
+    # load the models
     stringIndexModelFile = path + 'stringIndexModel'
     oneHotEncoderModelFile = path + 'oneHotEncoderModel'
     featureScaleModelFile = path + 'featureScaleModel'
-    print(featureScaleModelFile) 
     scaler = StandardScalerModel.load(featureScaleModelFile)
     ohPipelineModel =  PipelineModel.load(oneHotEncoderModelFile)
     indexModel = PipelineModel.load(stringIndexModelFile)
@@ -128,25 +142,20 @@ def init(path="./"):
     
     infoFile = path + 'info' 
     info = None
-    #infoDf = spark.read.csv(path + 'info', header=True, sep=',', inferSchema=True, nanValue="", mode='PERMISSIVE')
-    #info = infoDf.rdd.map(lambda x: (x[0], x[1])).collectAsMap()
-    import pickle
-    
+    # load info 
     with open(infoFile, 'rb') as handle:
         info = pickle.load(handle)
-    
-def run(input_df):
-    import json
+
+
+####################################################
+# Web service function:
+# make prediciton based on the input data frame
+####################################################    
+def run(inputDf):
     try:
         print("receive input")
-        import json
-        temp = json.loads(input_df)
-        
-        print(temp)
-
-        from pandas import DataFrame
+        temp = json.loads(inputDf)
         df = DataFrame.from_dict(temp)
-        print("df is loaded")
         print(df.head(5))
 
         featuredf = spark.createDataFrame(df)
