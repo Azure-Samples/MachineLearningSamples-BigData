@@ -42,6 +42,7 @@ from pandas.tseries.holiday import USFederalHolidayCalendar
 import requests
 import json
 
+from feature_eng import *
 #from azureml.sdk import data_collector
 trainBegin = '2009-01-01 00:00:00'
 
@@ -102,7 +103,7 @@ def readData(scoreBegin,serverIP, path):
    
     # filter down to the server IP of interest 
     IPList= {serverIP} 
-    hourlyfeaturedf = hourlyfeaturedf.filter(hourlyfeaturedf["ServerIP"].isin(IPList) == True)
+    hourlyfeaturedf = hourlyfeaturedf.filter(hourlyfeaturedf["h_ServerIP"].isin(IPList) == True)
     dailyStatisticdf = dailyStatisticdf.filter(dailyStatisticdf["d_ServerIP"].isin(IPList) == True)
     
     
@@ -110,203 +111,51 @@ def readData(scoreBegin,serverIP, path):
     dailyStatisticdf.cache()
     return hourlyfeaturedf,dailyStatisticdf
 
-#########################################################
-# generate the time series as the placeholder for features
-#########################################################
-def getTimeDf(scoreBegin, serverIP):
-    scoreBegin, scoreEnd, featureBegin, scoreEndDateTime,featureBeginDateTime, featureEndDateTime = getScoreTime(scoreBegin) 
-    # UDF
-    def generate_hour_series(start, stop, window=3600):
-        begin = start - start%window
-        end =   stop - stop%window + window
-        return [begin + x for x in range(0, end-begin + 1, window)]  
-    # Register UDF for later usage
-    spark.udf.register("generate_hour_series", generate_hour_series, ArrayType(IntegerType()) )
-    sqlStatement = """ SELECT explode(   generate_hour_series( UNIX_TIMESTAMP('{0!s}', "yyyy-MM-dd HH:mm:ss"),
-                 UNIX_TIMESTAMP('{1!s}', 'yyyy-MM-dd HH:mm:ss')) )
-           """.format(featureBegin, scoreEnd)
-    timeDf = spark.sql(sqlStatement)
-    
-    timeDf=  timeDf.withColumn("StartHour", col('col').cast('timestamp')) 
-    timeDf = timeDf.withColumn("h_ServerIP", lit(serverIP))
-    timeDf = timeDf.withColumn("h_key", concat(timeDf.h_ServerIP,lit("_"),timeDf.StartHour.cast('string')))
-    
-    def generate_day_series(start, stop, window=3600*24):
-        begin = start - start%window
-        end =   stop - stop%window + window
-        return [begin + x for x in range(0, end-begin + 1, window)]  
-    # Register UDF for later usage
-    spark.udf.register("generate_day_series", generate_day_series, ArrayType(IntegerType()) )
-    sqlStatement = """ SELECT explode(   generate_day_series( UNIX_TIMESTAMP('{0!s}', "yyyy-MM-dd HH:mm:ss"),
-                 UNIX_TIMESTAMP('{1!s}', 'yyyy-MM-dd HH:mm:ss')) )
-           """.format(featureBegin, scoreEnd)
-    dailyTimeDf = spark.sql(sqlStatement)
-    dailyTimeDf = dailyTimeDf.withColumn("daily_ServerIP", lit(serverIP))
-    
-    
-    dailyTimeDf=dailyTimeDf.withColumn("d_StartDay", col('col').cast('timestamp'))
-    dailyTimeDf = dailyTimeDf.withColumn("d_key", concat(dailyTimeDf.daily_ServerIP,lit("_"),dailyTimeDf.d_StartDay.cast('string')))
-    
-    print(timeDf.count())
-    timeDf.persist()
-    return dailyTimeDf,timeDf
 
 
-########################################
-# prepare the lag features
-########################################    
-def getLag(dailyTimeDf, timeDf, dailyStatisticdf, hourlyfeaturedf ):
-
-    hourlyfeaturedf = timeDf.join(hourlyfeaturedf, hourlyfeaturedf.key == timeDf.h_key, "outer")
-    hourlyfeaturedf.printSchema()
-    dailyStatisticdf = dailyStatisticdf.withColumn("d_key1", concat(dailyStatisticdf.d_ServerIP,lit("_"),dailyStatisticdf.d_SessionStartDay.cast('string')))
-    dailydf = dailyTimeDf.join(dailyStatisticdf, dailyTimeDf.d_key == dailyStatisticdf.d_key1, "outer" )
-    
-    # lag features
-    # previous week average
-    # rolling mean lag features
-    rollingLags = [2] # use features that's 48 hours ahead
-    lagColumns = [x for x in dailyStatisticdf.columns if 'Daily' in x]
-    print(lagColumns)
-    windowSize=[7]
-    for w in windowSize:
-        for i in rollingLags:
-            wSpec = Window.partitionBy('daily_ServerIP').orderBy('d_StartDay').rowsBetween(-i-w, -i-1)
-            for j in lagColumns:
-                dailydf = dailydf.withColumn(j+'Lag'+str(i)+'Win'+str(w),F.avg(dailydf[j]).over(wSpec) )
-    
-    selectColumns = [x for x in dailydf.columns if 'year' not in x and 'month' not in x and x != 'col'  ]
-    dailyDf = dailydf.select(selectColumns)
-    
-    # lag features    
-    previousWeek=int(24*7)
-    previousMonth=int(24*365.25/12)
-    lags=[48, 49, 50, 51, 52, 55, 60, 67, 72, 96]
-    lags.extend([previousWeek, previousMonth])
-    lagColumns = ['peakLoad']
-    for i in lags:
-        wSpec = Window.partitionBy('h_ServerIP').orderBy('StartHour')
-        for j in lagColumns:
-            hourlyfeaturedf = hourlyfeaturedf.withColumn(j+'Lag'+str(i),lag(hourlyfeaturedf[j], i).over(wSpec) )  
-    
-    # add day feature
-    day = 3600*24  
-    day_window = F.from_unixtime(F.unix_timestamp('StartHour') - F.unix_timestamp('StartHour') % day)
-    hourlyfeaturedf = hourlyfeaturedf.withColumn('StartDay', day_window)
-    dailyDf = dailyDf.withColumn("d_key2", concat(dailyDf.d_ServerIP,lit("_"),dailyDf.d_StartDay.cast('string')))
-
-    hourlyfeaturedf = hourlyfeaturedf.withColumn("d_key2", concat(hourlyfeaturedf.h_ServerIP,lit("_"),hourlyfeaturedf.StartDay.cast('string')))
-    
-    # Single column join is much faster than two columns join
-    hourlyfeaturedf = hourlyfeaturedf.join(dailyDf,  (hourlyfeaturedf.d_key2 == dailyDf.d_key2),
-                                   'outer' )
-
-    hourlyfeaturedf.printSchema()
-    hourlyfeaturedf = hourlyfeaturedf.select([x for x in hourlyfeaturedf.columns if 'd_' not in x and x != 'col'])
-
-    
-    return hourlyfeaturedf
 
 
-#####################################
-# prepare the time features for the input dataframe
-#######################################
-def getFeature(hourlyfeaturedf,scoreBegin):
-    featureeddf = hourlyfeaturedf 
-    print(hourlyfeaturedf.columns)
-    hourlyfeaturedf.show(5)
     scoreBegin, scoreEnd, featureBegin, scoreEndDateTime,featureBeginDateTime, featureEndDateTime = getScoreTime(scoreBegin)
     
-    featureeddf= featureeddf.filter(featureeddf.StartHour >= lit(scoreBegin).cast(TimestampType()) ).filter(featureeddf.StartHour < lit(scoreEnd).cast(TimestampType()))
-    
-    # Extract some time features from "SessionStartHourTime" column
-    featureeddf = featureeddf.withColumn('year', year(featureeddf['StartHour']))
-    featureeddf = featureeddf.withColumn('month', month(featureeddf['StartHour']))
-    featureeddf = featureeddf.withColumn('hourofday', hour(featureeddf['StartHour']))
- 
-    featureeddf = featureeddf.withColumn('weekofyear', weekofyear(featureeddf['StartHour']))
-    dayofweek = F.date_format(featureeddf['StartHour'], 'EEEE')    
-    featureeddf = featureeddf.withColumn('dayofweek', dayofweek )
-    featureeddf = featureeddf.withColumn('dayofmonth', hour(featureeddf['StartHour']))
-    
-    import datetime
-    trainBeginTimestamp = int(datetime.datetime.strftime(  datetime.datetime.strptime(trainBegin, "%Y-%m-%d %H:%M:%S") ,"%s"))
-    def linearTrend(x):
-        if x is None:
-            return 0
-        # return # of hour since the start of the training period
-        return (x-trainBeginTimestamp)/3600/24/365.25
-    
-    linearTrendUdf =  udf(linearTrend,IntegerType())
-    featureeddf = featureeddf.withColumn('linearTrend',linearTrendUdf(F.unix_timestamp('StartHour')))
-    cal = USFederalHolidayCalendar()
-    holidays_datetime = cal.holidays(start=holidayBegin, end=holidayEnd).to_pydatetime()
-    holidays = [t.strftime("%Y-%m-%d") for t in holidays_datetime]
-    
-    def isHoliday(x):
-        if x is None:
-            return 0
-        if x in holidays:
-            return 1
-        else:
-            return 0
-    isHolidayUdf =  udf (isHoliday, IntegerType())
-    featureeddf= featureeddf.withColumn('date', date_format(col('StartHour'), 'yyyy-MM-dd'))
-    featureeddf = featureeddf.withColumn("Holiday",isHolidayUdf('date'))
-    
-    def isBusinessHour(x):
-        if x is None:
-            return 0
-        if x >=8 and x <=18:
-            return 1
-        else:
-            return 0
-    isBusinessHourUdf =  udf (isBusinessHour, IntegerType())
-    featureeddf = featureeddf.withColumn("BusinessHour",isBusinessHourUdf('hourofday'))
-    
-    def isMorning(x):
-        if x is None:
-            return 0
-        if x >=6 and x <=9:
-            return 1
-        else:
-            return 0
-    isMorningUdf =  udf (isMorning, IntegerType())
-    featureeddf = featureeddf.withColumn("Morning",isMorningUdf('hourofday'))
-    
-    featureeddf.persist()
-    
-    return featureeddf
-
+   
 
 #############################################
 # mini batch scoring for serverIP with scoring start "scoreBegin"
 #############################################
 def miniBatchWebServiceScore(scoreBegin= '2016-07-01 00:00:00',serverIP='210.181.165.92'):    
-    dailyTimeDf,timeDf = getTimeDf(scoreBegin, serverIP)
     hourlyfeatureDf,dailyStatisticDf = readData(scoreBegin, serverIP, statsLocation)
-
     print("hourlyfeatureDf count: ",hourlyfeatureDf.count())
     print("dailyStatisticdf count: ",dailyStatisticDf.count())
-    lagDf = getLag(dailyTimeDf, timeDf, dailyStatisticDf, hourlyfeatureDf )
-    featureDf = getFeature(lagDf,scoreBegin)
-    print("featureDf count", featureDf.count())
-    features =  [x for x in featureDf.columns if 'Lag' in x]
-    features.extend(["h_key","StartHour","linearTrend"])
-    columnsForIndex = ['dayofweek', 'h_ServerIP', 'year', 'month', 'weekofyear', 'dayofmonth', 'hourofday', 
-                     'Holiday', 'BusinessHour', 'Morning']
-    features.extend(columnsForIndex)
-    featureDf = featureDf.select(features)
-    # make sure the schema is consistent with input dataframe schema in the web service
-    featureDf = featureDf.withColumn("key", col("h_key"))
-    # rename StartHour to SessionStartHourTime
-    # rename h_ServerIP to ServerIP
-    featureDf = featureDf.withColumnRenamed("StartHour", "SessionStartHourTime")
-    featureDf = featureDf.withColumnRenamed("h_ServerIP", "ServerIP")
-    featureDf = featureDf.fillna(0, subset= [x for x in featureDf.columns if 'Lag' in x])
+scoreBegin, scoreEnd, featureBegin, scoreEndDateTime,featureBeginDateTime, featureEndDateTime = getScoreTime(scoreBe
+gin)
+    timeHourlyDf = getAllHours(spark, featureBegin, scoreEnd)
+    timeDailyDf = getAllDays(spark, featureBegin, scoreEnd)
 
-    featureDf = featureDf.fillna(0, subset= ['linearTrend'])
-    temp = featureDf.toPandas()
+    bucketDailyDf = createDailyBuckets(dailyDf, timeDailyDf)
+    featureDailyDf = bucketDailyDf.join(dailyDf, dailyDf.d_key==bucketDailyDf.d_key2, 'outer')
+    featureDailyDf = addLagForDailyFeature(featureDailyDf)
+    featureDailyDf = featureDailyDf.select([x for x in featureDailyDf.columns if x not in ['Time', 'ServerIP']
+])
+
+    bucketHourlyDf = createHourlyBuckets(dailyDf, timeHourlyDf)
+    featureHourlyDf = bucketHourlyDf.join(hourlyDf, hourlyDf.h_key==bucketHourlyDf.h_key2, 'outer')
+
+    # add day feature
+    day = 3600*24
+    day_window = F.from_unixtime(F.unix_timestamp('Time') - F.unix_timestamp('Time') %day)
+    featureHourlyDf = featureHourlyDf.withColumn('SessionStartDay', day_window)
+
+    featureHourlyDf = featureHourlyDf.withColumn("h_key_join", concat(featureHourlyDf.ServerIP,lit("_"),feature
+HourlyDf.SessionStartDay))
+
+    featureDf = featureHourlyDf.join(featureDailyDf, featureHourlyDf.h_key_join==featureDailyDf.d_key2, "outer"
+)
+    featureDf = addLagForHourlyFeature(featureDf)
+    featureDf= featureDf.filter(featureDf.Time >= lit(scoreBegin).cast(TimestampType()) ).filter(featureDf.Time <= lit(scoreEnd).cast(TimestampType()))
+    
+    mlSourceDF = addTimeFeature(featureDf,featureBegin)
+ 
+    temp = mlSourceDF.toPandas()
     # make sure the key column exist in the json object
     temp = temp.set_index(['h_key']) 
     prediction= consumePOSTRequestSync(url, temp.to_json(orient='records'), authorization)  #webservice.run(temp.to_json(orient='records'))

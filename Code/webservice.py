@@ -44,48 +44,38 @@ import pickle
 # (2) encode the indexed features and 
 # (3) scale the numeric features
 #############################################
-def processDf(df):
-    mlSourceDF = df
-    mlSourceDF.printSchema()
+def processDf(mlSourceDF):
+    
     mlSourceDF=mlSourceDF.fillna(0, subset= [x for x in mlSourceDF.columns if 'Lag' in x])
-    mlSourceDF = mlSourceDF.na.drop(subset=["ServerIP","SessionStartHourTime"])
+    mlSourceDF = mlSourceDF.na.drop(subset=["ServerIP","Time"])
     columnsForIndex = ['dayofweek', 'ServerIP', 'year', 'month', 'weekofyear', 'dayofmonth', 'hourofday', 
                      'Holiday', 'BusinessHour', 'Morning']
     mlSourceDF=mlSourceDF.fillna(0, subset= [x for x in columnsForIndex ])
-    scoreDF = mlSourceDF 
-
+ 
     # indexing    
-    scoreDF = indexModel.transform(scoreDF)
+    indexedDF = indexModel.transform(mlSourceDF)
     # encoding
-    scoreDFCat = ohPipelineModel.transform(scoreDF)
+    encodedDF = ohPipelineModel.transform(indexedDF)
 
     # feature scaling
-    featuresForScale =  [x for x in scoreDFCat.columns if 'Lag' in x]
+    featuresForScale =  [x for x in encodedDF.columns if 'Lag' in x]
     assembler = VectorAssembler(
       inputCols=featuresForScale, outputCol="features"
     )
-    assembled = assembler.transform(scoreDFCat).select('key','features')
-    scaledData = scaler.transform(assembled).select('key','scaledFeatures')
-
+    assembled = assembler.transform(encodedDF).select('h_key2','features')
+    scaledData = scaler.transform(assembled).select('h_key2','scaledFeatures')
 
     def extract(row):
-        return (row.key, ) + tuple(float(x) for x in row.scaledFeatures.values)
-    from pyspark.sql.types import Row
-    from pyspark.mllib.linalg import DenseVector
+        return (row.rddKey, ) + tuple(float(x) for x in row.scaledFeatures.values)
     rdd = scaledData.rdd.map(lambda x: Row(key=x[0],scaledFeatures=DenseVector(x[1].toArray())))
-    scaledDf = rdd.map(extract).toDF(["key"])
+    scaledDf = rdd.map(extract).toDF(["rddKey"])
     # rename columns
     oldColumns = scaledDf.columns
     scaledColumns = ['scaledKey']
     scaledColumns.extend(['scaled'+str(i) for i in featuresForScale])
     scaledOutcome = scaledDf.select([col(oldColumns[index]).alias(scaledColumns[index]) for index in range(0,len(oldColumns))])
-    scaledOutcome.show(1)
-    scaledOutcome.cache()
-    noScaledMLSourceDF = scoreDFCat.select([column for column in scoreDFCat.columns if column not in featuresForScale])
-    noScaledMLSourceDF.cache()
-    noScaledMLSourceDF.printSchema()
-    scaledOutcome.printSchema()
-    newDF = noScaledMLSourceDF.join(scaledOutcome, (noScaledMLSourceDF.key==scaledOutcome.scaledKey), 'outer')
+    noScaledMLSourceDF = encodedDF.select([column for column in  encodedDF.columns if column not in featuresForScale])
+    result = noScaledMLSourceDF.join(scaledOutcome, (noScaledMLSourceDF.h_key2==scaledOutcome.scaledKey), 'outer')
     return newDF
     
 #############################################
@@ -93,8 +83,8 @@ def processDf(df):
 # The 1st argument is the loaded machine learning model
 # The 2nd argument is the dataframe with proper features 
 #############################################
-def score(mlModel, newDF):
-    ScoreDFCat = newDF
+def score(mlModel, scoreDFCat):
+    
     ScoreDFCat=ScoreDFCat.fillna(0, subset= [x for x in ScoreDFCat.columns if 'Lag' in x])
     ScoreDFCat=ScoreDFCat.fillna(0, subset= ['linearTrend'])
     
@@ -113,11 +103,11 @@ def score(mlModel, newDF):
 
     # Assemble features  !!! Values to assemble cannot be null
     va = VectorAssembler(inputCols=input_features, outputCol='features')
-    scoring_assembled = va.transform(scoring).select('ServerIP', 'SessionStartHourTime', 'features','label')
-    pred_class_rf = mlModel.transform(scoring_assembled.select('features','label', 'ServerIP', 'SessionStartHourTime'))
+    scoring_assembled = va.transform(scoring).select('ServerIP', 'Time', 'features','label')
+    pred_class_rf = mlModel.transform(scoring_assembled.select('features','label', 'ServerIP', 'Time'))
 
     # predictions_rf.groupby('peakload', 'prediction').count().show()
-    predictionAndLabels = pred_class_rf.select("ServerIP", "SessionStartHourTime", "prediction")
+    predictionAndLabels = pred_class_rf.select("ServerIP", "Time", "prediction")
     return predictionAndLabels
 
 ####################################################
@@ -169,7 +159,7 @@ def run(inputDf):
             
 if __name__ == '__main__':
     init('./Model/')
-    inputString = "[{\"peakLoadLag55\": 157.85000000000002, \"year\": 2016, \"peakLoadLag48\": 275.8000000000001, \"peakLoadLag50\": 382.2000000000001, \"peakLoadLag96\": 466.48000000000013, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"key\": \"210.181.165.92_2016-06-29 01:00:00\", \"peakLoadLag60\": 124.6, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 429.1000000000001, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 205.10000000000002, \"peakLoadLag49\": 466.9000000000002, \"peakLoadLag72\": 408.8000000000001, \"peakLoadLag168\": 219.80000000000007, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 166.32000000000002, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 01:00:00\", \"peakLoadLag52\": 170.80000000000004, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 1, \"Holiday\": 0, \"dayofmonth\": 1}, {\"peakLoadLag55\": 117.6, \"year\": 2016, \"peakLoadLag48\": 243.88000000000002, \"peakLoadLag50\": 466.9000000000002, \"peakLoadLag96\": 2755.830000000001, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"key\": \"210.181.165.92_2016-06-29 02:00:00\", \"peakLoadLag60\": 468.30000000000007, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 306.6, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 219.10000000000002, \"peakLoadLag49\": 275.8000000000001, \"peakLoadLag72\": 357.4200000000001, \"peakLoadLag168\": 166.60000000000002, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 382.2000000000001, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 02:00:00\", \"peakLoadLag52\": 166.32000000000002, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 2, \"Holiday\": 0, \"dayofmonth\": 2}]"
+    inputString = "[{\"peakLoadLag55\": 157.85000000000002, \"year\": 2016, \"peakLoadLag48\": 275.8000000000001, \"peakLoadLag50\": 382.2000000000001, \"peakLoadLag96\": 466.48000000000013, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"h_key2\": \"210.181.165.92_2016-06-29 01:00:00\", \"peakLoadLag60\": 124.6, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 429.1000000000001, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 205.10000000000002, \"peakLoadLag49\": 466.9000000000002, \"peakLoadLag72\": 408.8000000000001, \"peakLoadLag168\": 219.80000000000007, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 166.32000000000002, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 01:00:00\", \"peakLoadLag52\": 170.80000000000004, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 1, \"Holiday\": 0, \"dayofmonth\": 1}, {\"peakLoadLag55\": 117.6, \"year\": 2016, \"peakLoadLag48\": 243.88000000000002, \"peakLoadLag50\": 466.9000000000002, \"peakLoadLag96\": 2755.830000000001, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"h_key2\": \"210.181.165.92_2016-06-29 02:00:00\", \"peakLoadLag60\": 468.30000000000007, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 306.6, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 219.10000000000002, \"peakLoadLag49\": 275.8000000000001, \"peakLoadLag72\": 357.4200000000001, \"peakLoadLag168\": 166.60000000000002, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 382.2000000000001, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 02:00:00\", \"peakLoadLag52\": 166.32000000000002, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 2, \"Holiday\": 0, \"dayofmonth\": 2}]"
     prediction=run(inputString)
     print(prediction)
     

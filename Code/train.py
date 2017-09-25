@@ -128,8 +128,8 @@ LoadtoLabelUdf = udf(LoadtoLabel, IntegerType())
 mlSourceDFCat = mlSourceDFCat.withColumn("label", LoadtoLabelUdf(mlSourceDFCat['peakLoad']))
 
 # split the data into training data and test data
-training = mlSourceDFCat.filter(mlSourceDFCat.SessionStartHourTime < lit(testSplitStart).cast(TimestampType()) )
-testing = mlSourceDFCat.filter(mlSourceDFCat.SessionStartHourTime >= lit(testSplitStart).cast(TimestampType()) )
+training = mlSourceDFCat.filter(mlSourceDFCat.Time < lit(testSplitStart).cast(TimestampType()) )
+testing = mlSourceDFCat.filter(mlSourceDFCat.Time >= lit(testSplitStart).cast(TimestampType()) )
 print(training.count())
 print(testing.count())
 training.groupby('label').count().show()
@@ -145,7 +145,7 @@ print(input_features)
 
 # training 
 va = VectorAssembler(inputCols=input_features, outputCol='features')
-training_assembled = va.transform(training).select('ServerIP', 'SessionStartHourTime','label','features')
+training_assembled = va.transform(training).select('ServerIP', 'Time','label','features')
 rf = RandomForestClassifier(numTrees=100, maxDepth=8, seed=42, labelCol="label", featuresCol="features" )
 model = rf.fit(training_assembled)
 numFeatures = model.numFeatures
@@ -153,8 +153,8 @@ print("num of features is %g" % numFeatures)
 
 model.write().overwrite().save(mlModelFile)
 # evaluate training result
-pred_class_rf = model.transform(training_assembled.select(col('features'),col('Label')))
-evaluator_train = MulticlassClassificationEvaluator(predictionCol="prediction",labelCol="Label")
+pred_class_rf = model.transform(training_assembled.select(col('features'),col('label')))
+evaluator_train = MulticlassClassificationEvaluator(predictionCol="prediction",labelCol="label")
 accuracy = evaluator_train.evaluate(pred_class_rf, {evaluator_train.metricName: "accuracy"})
 weightedPrecision = evaluator_train.evaluate(pred_class_rf, {evaluator_train.metricName: "weightedPrecision"})
 weightedRecall = evaluator_train.evaluate(pred_class_rf, {evaluator_train.metricName: "weightedRecall"})
@@ -170,7 +170,7 @@ run_logger.log("Train Weighted Recall", weightedRecall)
 run_logger.log("Train F1", F1)
 
 # evaluate test result
-test_assembled = va.transform(testing).select('ServerIP', 'SessionStartHourTime','label','features')
+test_assembled = va.transform(testing).select('ServerIP', 'Time','label','features')
 pred_test_class_rf = model.transform(test_assembled.select(col('features'),col('label')))
 #predictions_rf.groupby('peakload', 'prediction').count().show()
 predictionAndLabels = pred_test_class_rf.select("label", "prediction")
