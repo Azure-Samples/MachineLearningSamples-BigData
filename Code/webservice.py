@@ -67,7 +67,7 @@ def processDf(mlSourceDF):
 
     def extract(row):
         return (row.rddKey, ) + tuple(float(x) for x in row.scaledFeatures.values)
-    rdd = scaledData.rdd.map(lambda x: Row(key=x[0],scaledFeatures=DenseVector(x[1].toArray())))
+    rdd = scaledData.rdd.map(lambda x: Row(rddKey=x[0],scaledFeatures=DenseVector(x[1].toArray())))
     scaledDf = rdd.map(extract).toDF(["rddKey"])
     # rename columns
     oldColumns = scaledDf.columns
@@ -76,14 +76,14 @@ def processDf(mlSourceDF):
     scaledOutcome = scaledDf.select([col(oldColumns[index]).alias(scaledColumns[index]) for index in range(0,len(oldColumns))])
     noScaledMLSourceDF = encodedDF.select([column for column in  encodedDF.columns if column not in featuresForScale])
     result = noScaledMLSourceDF.join(scaledOutcome, (noScaledMLSourceDF.h_key2==scaledOutcome.scaledKey), 'outer')
-    return newDF
+    return result
     
 #############################################
 # make prediciton based on the input data frame
 # The 1st argument is the loaded machine learning model
 # The 2nd argument is the dataframe with proper features 
 #############################################
-def score(mlModel, scoreDFCat):
+def score(mlModel, ScoreDFCat):
     
     ScoreDFCat=ScoreDFCat.fillna(0, subset= [x for x in ScoreDFCat.columns if 'Lag' in x])
     ScoreDFCat=ScoreDFCat.fillna(0, subset= ['linearTrend'])
@@ -158,8 +158,9 @@ def run(inputDf):
 
             
 if __name__ == '__main__':
-    init('./Model/')
-    inputString = "[{\"peakLoadLag55\": 157.85000000000002, \"year\": 2016, \"peakLoadLag48\": 275.8000000000001, \"peakLoadLag50\": 382.2000000000001, \"peakLoadLag96\": 466.48000000000013, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"h_key2\": \"210.181.165.92_2016-06-29 01:00:00\", \"peakLoadLag60\": 124.6, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 429.1000000000001, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 205.10000000000002, \"peakLoadLag49\": 466.9000000000002, \"peakLoadLag72\": 408.8000000000001, \"peakLoadLag168\": 219.80000000000007, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 166.32000000000002, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 01:00:00\", \"peakLoadLag52\": 170.80000000000004, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 1, \"Holiday\": 0, \"dayofmonth\": 1}, {\"peakLoadLag55\": 117.6, \"year\": 2016, \"peakLoadLag48\": 243.88000000000002, \"peakLoadLag50\": 466.9000000000002, \"peakLoadLag96\": 2755.830000000001, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"h_key2\": \"210.181.165.92_2016-06-29 02:00:00\", \"peakLoadLag60\": 468.30000000000007, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 306.6, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 219.10000000000002, \"peakLoadLag49\": 275.8000000000001, \"peakLoadLag72\": 357.4200000000001, \"peakLoadLag168\": 166.60000000000002, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 382.2000000000001, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"SessionStartHourTime\": \"2016-06-29 02:00:00\", \"peakLoadLag52\": 166.32000000000002, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 2, \"Holiday\": 0, \"dayofmonth\": 2}]"
+    init('./Models/')
+    inputString = "[{\"Time\":1467500400000,\"ServerIP\":\"210.181.165.92\",\"h_key2\":\"210.181.165.92_2016-07-02 23:00:00\",\"SessionStartDay\":\"2016-07-02 00:00:00\",\"peakLoadDailyLag2Win7\":0.0,\"peakBytesDailyLag2Win7\":0.0,\"peakLoad1DailyLag2Win7\":0.0,\"peakLoad2DailyLag2Win7\":0.0,\"peakLoad3DailyLag2Win7\":0.0,\"peakLoad4DailyLag2Win7\":0.0,\"peakLoad5DailyLag2Win7\":0.0,\"peakLoadSecureDailyLag2Win7\":0.0,\"peakLoadLag48\":173.6,\"peakLoadLag49\":209.3,\"peakLoadLag50\":467.67,\"peakLoadLag51\":352.8,\"peakLoadLag52\":296.8,\"peakLoadLag55\":417.48,\"peakLoadLag60\":168.7,\"peakLoadLag67\":124.6,\"peakLoadLag72\":280.7,\"peakLoadLag96\":381.85,\"peakLoadLag168\":417.9,\"peakLoadLag730\":260.12,\"year\":2016,\"month\":7,\"weekofyear\":26,\"dayofmonth\":2,\"hourofday\":23,\"dayofweek\":\"Saturday\",\"linearTrend\":0,\"Holiday\":0,\"BusinessHour\":0,\"Morning\":0}]"
+    #inputString = "[{\"peakLoadLag55\": 157.85000000000002, \"year\": 2016, \"peakLoadLag48\": 275.8000000000001, \"peakLoadLag50\": 382.2000000000001, \"peakLoadLag96\": 466.48000000000013, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"h_key2\": \"210.181.165.92_2016-06-29 01:00:00\", \"peakLoadLag60\": 124.6, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 429.1000000000001, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 205.10000000000002, \"peakLoadLag49\": 466.9000000000002, \"peakLoadLag72\": 408.8000000000001, \"peakLoadLag168\": 219.80000000000007, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 166.32000000000002, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"Time\": \"2016-06-29 01:00:00\", \"peakLoadLag52\": 170.80000000000004, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 1, \"Holiday\": 0, \"dayofmonth\": 1}, {\"peakLoadLag55\": 117.6, \"year\": 2016, \"peakLoadLag48\": 243.88000000000002, \"peakLoadLag50\": 466.9000000000002, \"peakLoadLag96\": 2755.830000000001, \"peakLoad5DailyLag2Win7\": 6.173369565217391, \"h_key2\": \"210.181.165.92_2016-06-29 02:00:00\", \"peakLoadLag60\": 468.30000000000007, \"peakLoadDailyLag2Win7\": 317.9180615942029, \"dayofweek\": \"Wednesday\", \"peakBytesDailyLag2Win7\": 59.89416666666667, \"peakLoadLag730\": 306.6, \"Morning\": 0, \"peakLoad1DailyLag2Win7\": 277.55797101449275, \"weekofyear\": 26, \"month\": 6, \"linearTrend\": 0, \"peakLoadLag67\": 219.10000000000002, \"peakLoadLag49\": 275.8000000000001, \"peakLoadLag72\": 357.4200000000001, \"peakLoadLag168\": 166.60000000000002, \"peakLoad4DailyLag2Win7\": 16.995144927536234, \"peakLoadLag51\": 382.2000000000001, \"peakLoad3DailyLag2Win7\": 7.420289855072464, \"ServerIP\": \"210.181.165.92\", \"Time\": \"2016-06-29 02:00:00\", \"peakLoadLag52\": 166.32000000000002, \"BusinessHour\": 0, \"peakLoad2DailyLag2Win7\": 5.212862318840579, \"peakLoadSecureDailyLag2Win7\": 4.477173913043477, \"hourofday\": 2, \"Holiday\": 0, \"dayofmonth\": 2}]"
     prediction=run(inputString)
     print(prediction)
     
