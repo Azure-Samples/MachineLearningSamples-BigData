@@ -47,6 +47,7 @@ from azureml.logging import get_azureml_logger
 # initialize logger
 run_logger = get_azureml_logger()
 
+run_logger.log("amlrealworld.bigdata.train",true)
 # load configuration    
 configFilename = "./Config/storageconfig.json"
 
