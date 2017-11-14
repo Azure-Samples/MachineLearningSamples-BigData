@@ -25,6 +25,10 @@ Forecasting workload on servers is a common business need for technology compani
 * An Azure Storage account. You can follow the [instructions](https://docs.microsoft.com/azure/storage/common/storage-create-storage-account) to create an Azure storage account. Also, create two private Blob containers with name "`fullmodel`" and "`onemonthmodel`" in this storage account. The storage account is used to save intermediate compute results and machine learning models. You need the storage account name and access key to try out this example. 
 
 
+## Data/Telemetry
+"Server Workload Forecasting on Terabytes Data" collects usage data and sends it to Microsoft to help improve our products and services. Read our [privacy statement](http://go.microsoft.com/fwlink/?LinkId=521839) to learn more. 
+
+
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
