@@ -1,4 +1,4 @@
-########################################
+T########################################
 # This script uses the result from etl.py 
 # to train a multi-class Random Forest Classification model
 # It takes one argument: 
@@ -47,7 +47,7 @@ from azureml.logging import get_azureml_logger
 # initialize logger
 run_logger = get_azureml_logger()
 
-run_logger.log("amlrealworld.bigdata.train",true)
+run_logger.log("amlrealworld.bigdata.train",True)
 # load configuration    
 configFilename = "./Config/storageconfig.json"
 
