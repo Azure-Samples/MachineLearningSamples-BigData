@@ -1,4 +1,5 @@
 # Download Model Parquet Files to Local Machine
+If you decide to download the model files instead of use the model files that come in the Model folder, we suggest you remove the content in the Model folder before you proceed.
 
 ## Use Local Python to Download
 If you have a local version of python,
