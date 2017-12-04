@@ -48,10 +48,14 @@ configFilename = "./Config/fulldata_storageconfig.json"
 if len(sys.argv) > 1:
     configFilename = sys.argv[1]
 
-localPath = os.environ['AZUREML_NATIVE_SHARE_DIRECTORY']
+localPath = "./Model"
 
-if len(sys.argv) > 2:
+if  'AZUREML_NATIVE_SHARE_DIRECTORY' in os.environ.keys():
+    print(os.environ['AZUREML_NATIVE_SHARE_DIRECTORY'])
+    localPath = os.environ['AZUREML_NATIVE_SHARE_DIRECTORY']
+elif len(sys.argv) > 2:
     localPath = sys.argv[2]
+    
 
 # local configuration
 with open(configFilename) as configFile:    
